@@ -4,24 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#070b14">
-  <title>LeakGuard Pro</title>
+  <title>LeakGuard Pro - Live Dashboard</title>
 
   <style>
     :root {
       --bg: #070b14;
-      --card-bg: rgba(21, 30, 50, 0.7);
+      --card-bg: rgba(21, 30, 50, 0.75);
       --card-border: rgba(255, 255, 255, 0.08);
       --safe: #00f090;
-      --safe-glow: rgba(0, 240, 144, 0.25);
+      --safe-glow: rgba(0, 240, 144, 0.28);
       --alarm: #ff2a55;
-      --alarm-glow: rgba(255, 42, 85, 0.5);
+      --alarm-glow: rgba(255, 42, 85, 0.55);
       --warn: #ffb800;
+      --warn-glow: rgba(255, 184, 0, 0.35);
       --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
       background-color: var(--bg);
@@ -34,6 +41,7 @@
       overflow-x: hidden;
     }
 
+    /* Top App Header */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -41,7 +49,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
-      padding: 12px 18px;
+      padding: 14px 18px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 16px;
@@ -51,34 +59,40 @@
       font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: 0.5px;
-      background: linear-gradient(135deg, #fff, #94a3b8);
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .connection-badge {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       font-size: 0.75rem;
+      font-weight: 600;
       color: var(--sub);
     }
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--alarm);
-      box-shadow: 0 0 8px var(--alarm);
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
       transition: all 0.3s ease;
     }
     .dot.connected {
       background: var(--safe);
-      box-shadow: 0 0 8px var(--safe);
+      box-shadow: 0 0 10px var(--safe);
+    }
+    .dot.offline {
+      background: var(--alarm);
+      box-shadow: 0 0 10px var(--alarm);
     }
 
+    /* Master Status Ring */
     .status-orb-container {
       width: 220px;
       height: 220px;
-      margin: 10px auto 26px auto;
+      margin: 10px auto 24px auto;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -96,22 +110,22 @@
     }
     .orb-ring.alarm {
       border-color: var(--alarm);
-      box-shadow: 0 0 50px var(--alarm-glow);
+      box-shadow: 0 0 55px var(--alarm-glow);
       animation: pulse-rapid 0.8s infinite ease-in-out;
-    }
-    .orb-ring.offline {
-      border-color: var(--offline);
-      box-shadow: 0 0 25px rgba(100, 116, 139, 0.2);
-      animation: none;
     }
     .orb-ring.error {
       border-color: var(--warn);
-      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
+      box-shadow: 0 0 35px var(--warn-glow);
+      animation: none;
+    }
+    .orb-ring.offline {
+      border-color: var(--offline);
+      box-shadow: 0 0 20px rgba(100, 116, 139, 0.2);
       animation: none;
     }
 
     @keyframes breathe {
-      0% { transform: scale(0.96); opacity: 0.7; }
+      0% { transform: scale(0.96); opacity: 0.75; }
       100% { transform: scale(1.02); opacity: 1; }
     }
     @keyframes pulse-rapid {
@@ -134,11 +148,13 @@
       text-align: center;
     }
     .last-seen-text {
-      font-size: 0.70rem;
+      font-size: 0.72rem;
       color: var(--sub);
-      margin-top: 4px;
+      margin-top: 6px;
+      letter-spacing: 0.3px;
     }
 
+    /* 4-Zone Cards Grid */
     .zone-container {
       width: 100%;
       max-width: 440px;
@@ -154,16 +170,12 @@
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .zone-card.alarm {
       border-color: var(--alarm);
-      background: rgba(255, 42, 85, 0.12);
-      box-shadow: 0 0 20px rgba(255, 42, 85, 0.25);
-    }
-    .zone-card.offline {
-      border-color: rgba(255, 255, 255, 0.04);
-      opacity: 0.65;
+      background: rgba(255, 42, 85, 0.14);
+      box-shadow: 0 0 22px rgba(255, 42, 85, 0.3);
     }
     .zone-header {
       font-size: 0.72rem;
@@ -185,67 +197,28 @@
       border-radius: 50%;
       background: var(--safe);
       box-shadow: 0 0 8px var(--safe);
+      transition: all 0.3s ease;
     }
     .badge-icon.wet {
       background: var(--alarm);
       box-shadow: 0 0 10px var(--alarm);
       animation: blink 0.6s infinite alternate;
     }
+    .badge-icon.warn {
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
+    }
     .badge-icon.off {
       background: var(--offline);
       box-shadow: none;
     }
+
     @keyframes blink {
-      from { opacity: 0.3; }
+      from { opacity: 0.35; }
       to { opacity: 1; }
     }
 
-    #emergencyModal {
-      position: fixed;
-      inset: 0;
-      background: rgba(10, 0, 4, 0.94);
-      backdrop-filter: blur(20px);
-      z-index: 999;
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 24px;
-      text-align: center;
-    }
-    .alarm-symbol {
-      width: 90px;
-      height: 90px;
-      fill: var(--alarm);
-      filter: drop-shadow(0 0 25px var(--alarm));
-      animation: pulse-rapid 0.6s infinite ease-in-out;
-      margin-bottom: 18px;
-    }
-    .emergency-title {
-      font-size: 1.85rem;
-      font-weight: 900;
-      color: #fff;
-      margin-bottom: 6px;
-      letter-spacing: 1px;
-    }
-    .emergency-zones {
-      font-size: 1.1rem;
-      color: var(--alarm);
-      font-weight: 700;
-      margin-bottom: 24px;
-    }
-    .dismiss-btn {
-      background: var(--alarm);
-      color: #fff;
-      border: none;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 14px 34px;
-      border-radius: 30px;
-      box-shadow: 0 0 30px var(--alarm-glow);
-      cursor: pointer;
-    }
-
+    /* Sound Activator Button */
     .audio-btn {
       width: 100%;
       max-width: 440px;
@@ -261,28 +234,92 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      margin-bottom: 12px;
+      transition: background 0.2s ease;
+    }
+    .audio-btn:active {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Fullscreen Emergency Pop-Up Modal */
+    #emergencyModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 0, 4, 0.94);
+      backdrop-filter: blur(20px);
+      z-index: 999;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .alarm-symbol {
+      width: 90px;
+      height: 90px;
+      fill: var(--alarm);
+      filter: drop-shadow(0 0 25px var(--alarm));
+      animation: pulse-rapid 0.6s infinite ease-in-out;
+      margin-bottom: 18px;
+    }
+    .emergency-title {
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .emergency-zones {
+      font-size: 1.1rem;
+      color: var(--alarm);
+      font-weight: 700;
+      margin-bottom: 26px;
+    }
+    .dismiss-btn {
+      background: var(--alarm);
+      color: #ffffff;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px 34px;
+      border-radius: 30px;
+      box-shadow: 0 0 30px var(--alarm-glow);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .dismiss-btn:active {
+      transform: scale(0.97);
     }
   </style>
 </head>
 <body>
 
+  <!-- App Header -->
   <div class="app-header">
     <div class="brand-title">LEAKGUARD PRO</div>
     <div class="connection-badge">
       <div class="dot" id="connDot"></div>
-      <span id="connText">Syncing...</span>
+      <span id="connText">Connecting...</span>
     </div>
   </div>
 
+  <!-- Master Center Visual Ring -->
   <div class="status-orb-container">
     <div class="orb-ring" id="orbRing"></div>
     <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
     <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-    <div class="last-seen-text" id="lastSeenText"></div>
+    <div class="last-seen-text" id="lastSeenText">Establishing Cloud Sync...</div>
   </div>
 
+  <!-- 4 Monitored Zones -->
   <div class="zone-container">
     <div class="zone-card" id="cardInlet">
       <div class="zone-header">Inlet Plumbing</div>
@@ -304,6 +341,7 @@
 
   <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Tap to Enable High-Decibel Siren</button>
 
+  <!-- High-Contrast Emergency Modal -->
   <div id="emergencyModal">
     <svg class="alarm-symbol" viewBox="0 0 24 24">
       <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
@@ -314,15 +352,16 @@
   </div>
 
   <script>
+    // Blynk Cloud REST API Configuration
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
-    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v3&v4&v5&v6&v7`;
+    // Polls only valid active virtual datastreams (v0, v2, v3, v4, v5, v6)
+    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v2&v3&v4&v5&v6`;
 
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
-    let lastRecordedTimestamp = null;
-    let stagnantCounter = 0;
 
+    // Web Audio Synthesizer (Zero External Audio Assets Required)
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -344,88 +383,57 @@
         osc.start();
         osc.stop(audioCtx.currentTime + 0.3);
       } catch (e) {}
+
+      // Native Android Haptic Pulse
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
 
     function dismissModal() {
       document.getElementById('emergencyModal').style.display = 'none';
       isSilenced = true;
-      clearInterval(alarmInterval);
-      alarmInterval = null;
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
     }
 
     async function pollBlynk() {
       try {
         const response = await fetch(BLYNK_API_URL);
-        if (!response.ok) throw new Error("Network status: " + response.status);
+        if (!response.ok) throw new Error("HTTP Status: " + response.status);
         const data = await response.json();
 
-        const serverEpoch = Number(data.v7) || 0;
-        const nowEpoch = Math.floor(Date.now() / 1000);
-        const ageSeconds = nowEpoch - serverEpoch;
+        // Connection Indicator
+        document.getElementById('connDot').className = "dot connected";
+        document.getElementById('connText').innerText = "LIVE CLOUD";
 
-        // Check for stuck values if NTP was unavailable
-        if (serverEpoch === lastRecordedTimestamp) {
-          stagnantCounter++;
-        } else {
-          stagnantCounter = 0;
-          lastRecordedTimestamp = serverEpoch;
-        }
+        // Display IP or Status
+        const ipDisplay = data.v2 && data.v2 !== "0.0.0.0" ? `Device IP: ${data.v2}` : "Connected to Blynk Cloud";
+        document.getElementById('lastSeenText').innerText = ipDisplay;
 
-        // Hardware Watchdog: Flag offline if data is older than 25 seconds or unchanged for 18 polling cycles (~27s)
-        const isDeviceOffline = (ageSeconds > 25) || (stagnantCounter >= 18) || (serverEpoch === 0);
+        // Parse Virtual Pins
+        const hasLeak = (Number(data.v0) === 1);
+        const hasError = (Number(data.v0) === 2);
+        const inletWet = (Number(data.v3) === 1);
+        const outletWet = (Number(data.v4) === 1);
+        const unitWet = (Number(data.v5) === 1);
+        const extWet = (Number(data.v6) === 1);
+        const extErr = (Number(data.v6) === 2);
 
-        if (isDeviceOffline) {
-          applyOfflineState(ageSeconds > 0 && ageSeconds < 86400 ? ageSeconds : null);
-        } else {
-          document.getElementById('connDot').className = "dot connected";
-          document.getElementById('connText').innerText = "LIVE CLOUD";
-          document.getElementById('lastSeenText').innerText = "Live Telemetry Active";
-
-          updateUI({
-            has_leak: Number(data.v0) === 1,
-            has_error: Number(data.v0) === 2,
-            inlet: Number(data.v3) === 1,
-            outlet: Number(data.v4) === 1,
-            unit: Number(data.v5) === 1,
-            external: Number(data.v6) === 1,
-            external_err: Number(data.v6) === 2
-          });
-        }
+        updateUI({
+          has_leak: hasLeak,
+          has_error: hasError,
+          inlet: inletWet,
+          outlet: outletWet,
+          unit: unitWet,
+          external: extWet,
+          external_err: extErr
+        });
 
       } catch (err) {
-        applyOfflineState(null);
-      }
-    }
-
-    function applyOfflineState(secondsAgo) {
-      document.getElementById('connDot').className = "dot";
-      document.getElementById('connText').innerText = "DEVICE OFFLINE";
-
-      const orb = document.getElementById('orbRing');
-      const icon = document.getElementById('masterIcon');
-      const title = document.getElementById('masterStatusText');
-      const lastSeen = document.getElementById('lastSeenText');
-
-      orb.className = "orb-ring offline";
-      icon.style.fill = "var(--offline)";
-      icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-      title.innerText = "HARDWARE OFFLINE";
-      title.style.color = "var(--offline)";
-
-      lastSeen.innerText = secondsAgo ? `Last contact: ${secondsAgo}s ago` : "Hardware not connected";
-
-      // Mark zones as OFFLINE rather than DRY
-      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', false, false, true);
-      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', false, false, true);
-      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', false, false, true);
-      setZoneCard('cardExt', 'dotExt', 'txtExt', false, false, true);
-
-      // Hide false alarm pop-up
-      document.getElementById('emergencyModal').style.display = 'none';
-      if (alarmInterval) {
-        clearInterval(alarmInterval);
-        alarmInterval = null;
+        document.getElementById('connDot').className = "dot";
+        document.getElementById('connText').innerText = "CONNECTING...";
+        document.getElementById('lastSeenText').innerText = "Reaching Blynk Cloud...";
       }
     }
 
@@ -434,11 +442,12 @@
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
 
-      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', state.inlet, false, false);
-      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', state.outlet, false, false);
-      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', state.unit, false, false);
-      setZoneCard('cardExt', 'dotExt', 'txtExt', state.external, state.external_err, false);
+      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', state.inlet, false);
+      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', state.outlet, false);
+      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', state.unit, false);
+      setZoneCard('cardExt', 'dotExt', 'txtExt', state.external, state.external_err);
 
+      // 1. Critical Leak Alarm
       if (state.has_leak) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
@@ -463,6 +472,7 @@
           }
         }
       } else {
+        // Reset mute status when dry
         isSilenced = false;
         document.getElementById('emergencyModal').style.display = 'none';
         if (alarmInterval) {
@@ -470,13 +480,16 @@
           alarmInterval = null;
         }
 
+        // 2. RS485 Communication Error
         if (state.has_error) {
           orb.className = "orb-ring error";
           icon.style.fill = "var(--warn)";
           icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
           title.innerText = "SENSOR FAULT";
           title.style.color = "var(--warn)";
-        } else {
+        }
+        // 3. Normal / Secure
+        else {
           orb.className = "orb-ring";
           icon.style.fill = "var(--safe)";
           icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
@@ -486,7 +499,7 @@
       }
     }
 
-    function setZoneCard(cardId, dotId, txtId, isWet, isError, isOffline) {
+    function setZoneCard(cardId, dotId, txtId, isWet, isError) {
       const card = document.getElementById(cardId);
       const dot = document.getElementById(dotId);
       const txt = document.getElementById(txtId);
@@ -494,14 +507,8 @@
       card.className = "zone-card";
       dot.className = "badge-icon";
 
-      if (isOffline) {
-        card.classList.add("offline");
-        dot.classList.add("off");
-        txt.innerText = "OFFLINE";
-        txt.style.color = "var(--offline)";
-      } else if (isError) {
-        dot.style.background = "var(--warn)";
-        dot.style.boxShadow = "none";
+      if (isError) {
+        dot.classList.add("warn");
         txt.innerText = "FAULT";
         txt.style.color = "var(--warn)";
       } else if (isWet) {
@@ -515,8 +522,8 @@
       }
     }
 
-    // Poll Blynk every 1.5 seconds
-    setInterval(pollBlynk, 1500);
+    // Poll Blynk Cloud every 1.2 seconds
+    setInterval(pollBlynk, 1200);
     pollBlynk();
   </script>
 </body>
