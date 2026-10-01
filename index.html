@@ -16,6 +16,7 @@
       --alarm: #ff2a55;
       --alarm-glow: rgba(255, 42, 85, 0.5);
       --warn: #ffb800;
+      --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
     }
@@ -65,8 +66,8 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--warn);
-      box-shadow: 0 0 8px var(--warn);
+      background: var(--alarm);
+      box-shadow: 0 0 8px var(--alarm);
       transition: all 0.3s ease;
     }
     .dot.connected {
@@ -98,6 +99,11 @@
       box-shadow: 0 0 50px var(--alarm-glow);
       animation: pulse-rapid 0.8s infinite ease-in-out;
     }
+    .orb-ring.offline {
+      border-color: var(--offline);
+      box-shadow: 0 0 25px rgba(100, 116, 139, 0.2);
+      animation: none;
+    }
     .orb-ring.error {
       border-color: var(--warn);
       box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
@@ -121,10 +127,16 @@
       transition: fill 0.3s ease;
     }
     .master-status-text {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: 1px;
       text-transform: uppercase;
+      text-align: center;
+    }
+    .last-seen-text {
+      font-size: 0.70rem;
+      color: var(--sub);
+      margin-top: 4px;
     }
 
     .zone-container {
@@ -142,12 +154,16 @@
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s ease;
     }
     .zone-card.alarm {
       border-color: var(--alarm);
       background: rgba(255, 42, 85, 0.12);
       box-shadow: 0 0 20px rgba(255, 42, 85, 0.25);
+    }
+    .zone-card.offline {
+      border-color: rgba(255, 255, 255, 0.04);
+      opacity: 0.65;
     }
     .zone-header {
       font-size: 0.72rem;
@@ -170,10 +186,14 @@
       background: var(--safe);
       box-shadow: 0 0 8px var(--safe);
     }
-    .zone-card.alarm .badge-icon {
+    .badge-icon.wet {
       background: var(--alarm);
       box-shadow: 0 0 10px var(--alarm);
       animation: blink 0.6s infinite alternate;
+    }
+    .badge-icon.off {
+      background: var(--offline);
+      box-shadow: none;
     }
     @keyframes blink {
       from { opacity: 0.3; }
@@ -192,11 +212,6 @@
       align-items: center;
       padding: 24px;
       text-align: center;
-      animation: modalFadeIn 0.3s ease-out;
-    }
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
     }
     .alarm-symbol {
       width: 90px;
@@ -255,7 +270,7 @@
     <div class="brand-title">LEAKGUARD PRO</div>
     <div class="connection-badge">
       <div class="dot" id="connDot"></div>
-      <span id="connText">Connecting...</span>
+      <span id="connText">Syncing...</span>
     </div>
   </div>
 
@@ -264,25 +279,26 @@
     <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
-    <div class="master-status-text" id="masterStatusText" style="color: var(--safe);">SYSTEM SECURE</div>
+    <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
+    <div class="last-seen-text" id="lastSeenText"></div>
   </div>
 
   <div class="zone-container">
     <div class="zone-card" id="cardInlet">
       <div class="zone-header">Inlet Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon"></div><span id="txtInlet">DRY</span></div>
+      <div class="zone-badge"><div class="badge-icon" id="dotInlet"></div><span id="txtInlet">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardOutlet">
       <div class="zone-header">Outlet Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon"></div><span id="txtOutlet">DRY</span></div>
+      <div class="zone-badge"><div class="badge-icon" id="dotOutlet"></div><span id="txtOutlet">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardUnit">
       <div class="zone-header">Unit Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon"></div><span id="txtUnit">DRY</span></div>
+      <div class="zone-badge"><div class="badge-icon" id="dotUnit"></div><span id="txtUnit">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardExt">
       <div class="zone-header">External RS485</div>
-      <div class="zone-badge"><div class="badge-icon"></div><span id="txtExt">DRY</span></div>
+      <div class="zone-badge"><div class="badge-icon" id="dotExt"></div><span id="txtExt">SYNCING</span></div>
     </div>
   </div>
 
@@ -299,11 +315,13 @@
 
   <script>
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
-    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v3&v4&v5&v6`;
+    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v3&v4&v5&v6&v7`;
 
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
+    let lastRecordedTimestamp = null;
+    let stagnantCounter = 0;
 
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -326,7 +344,6 @@
         osc.start();
         osc.stop(audioCtx.currentTime + 0.3);
       } catch (e) {}
-
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
 
@@ -340,36 +357,75 @@
     async function pollBlynk() {
       try {
         const response = await fetch(BLYNK_API_URL);
-        if (!response.ok) throw new Error("HTTP error " + response.status);
+        if (!response.ok) throw new Error("Network status: " + response.status);
         const data = await response.json();
 
-        document.getElementById('connDot').className = "dot connected";
-        document.getElementById('connText').innerText = "LIVE CLOUD";
+        const serverEpoch = Number(data.v7) || 0;
+        const nowEpoch = Math.floor(Date.now() / 1000);
+        const ageSeconds = nowEpoch - serverEpoch;
 
-        // Virtual Pins from blynk_manager.py:
-        // v0: Master Code (1=Leak, 0=Normal, 2=Error)
-        // v3: Inlet, v4: Outlet, v5: Unit, v6: External
-        const hasLeak = (Number(data.v0) === 1);
-        const hasError = (Number(data.v0) === 2);
-        const inletWet = (Number(data.v3) === 1);
-        const outletWet = (Number(data.v4) === 1);
-        const unitWet = (Number(data.v5) === 1);
-        const extWet = (Number(data.v6) === 1);
-        const extErr = (Number(data.v6) === 2);
+        // Check for stuck values if NTP was unavailable
+        if (serverEpoch === lastRecordedTimestamp) {
+          stagnantCounter++;
+        } else {
+          stagnantCounter = 0;
+          lastRecordedTimestamp = serverEpoch;
+        }
 
-        updateUI({
-          has_leak: hasLeak,
-          has_error: hasError,
-          inlet: inletWet,
-          outlet: outletWet,
-          unit: unitWet,
-          external: extWet,
-          external_err: extErr
-        });
+        // Hardware Watchdog: Flag offline if data is older than 25 seconds or unchanged for 18 polling cycles (~27s)
+        const isDeviceOffline = (ageSeconds > 25) || (stagnantCounter >= 18) || (serverEpoch === 0);
+
+        if (isDeviceOffline) {
+          applyOfflineState(ageSeconds > 0 && ageSeconds < 86400 ? ageSeconds : null);
+        } else {
+          document.getElementById('connDot').className = "dot connected";
+          document.getElementById('connText').innerText = "LIVE CLOUD";
+          document.getElementById('lastSeenText').innerText = "Live Telemetry Active";
+
+          updateUI({
+            has_leak: Number(data.v0) === 1,
+            has_error: Number(data.v0) === 2,
+            inlet: Number(data.v3) === 1,
+            outlet: Number(data.v4) === 1,
+            unit: Number(data.v5) === 1,
+            external: Number(data.v6) === 1,
+            external_err: Number(data.v6) === 2
+          });
+        }
 
       } catch (err) {
-        document.getElementById('connDot').className = "dot";
-        document.getElementById('connText').innerText = "Syncing...";
+        applyOfflineState(null);
+      }
+    }
+
+    function applyOfflineState(secondsAgo) {
+      document.getElementById('connDot').className = "dot";
+      document.getElementById('connText').innerText = "DEVICE OFFLINE";
+
+      const orb = document.getElementById('orbRing');
+      const icon = document.getElementById('masterIcon');
+      const title = document.getElementById('masterStatusText');
+      const lastSeen = document.getElementById('lastSeenText');
+
+      orb.className = "orb-ring offline";
+      icon.style.fill = "var(--offline)";
+      icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
+      title.innerText = "HARDWARE OFFLINE";
+      title.style.color = "var(--offline)";
+
+      lastSeen.innerText = secondsAgo ? `Last contact: ${secondsAgo}s ago` : "Hardware not connected";
+
+      // Mark zones as OFFLINE rather than DRY
+      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', false, false, true);
+      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', false, false, true);
+      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', false, false, true);
+      setZoneCard('cardExt', 'dotExt', 'txtExt', false, false, true);
+
+      // Hide false alarm pop-up
+      document.getElementById('emergencyModal').style.display = 'none';
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
       }
     }
 
@@ -378,10 +434,10 @@
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
 
-      setCardState('cardInlet', 'txtInlet', state.inlet);
-      setCardState('cardOutlet', 'txtOutlet', state.outlet);
-      setCardState('cardUnit', 'txtUnit', state.unit);
-      setCardState('cardExt', 'txtExt', state.external, state.external_err);
+      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', state.inlet, false, false);
+      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', state.outlet, false, false);
+      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', state.unit, false, false);
+      setZoneCard('cardExt', 'dotExt', 'txtExt', state.external, state.external_err, false);
 
       if (state.has_leak) {
         orb.className = "orb-ring alarm";
@@ -430,16 +486,27 @@
       }
     }
 
-    function setCardState(cardId, txtId, isWet, isError = false) {
+    function setZoneCard(cardId, dotId, txtId, isWet, isError, isOffline) {
       const card = document.getElementById(cardId);
+      const dot = document.getElementById(dotId);
       const txt = document.getElementById(txtId);
-      card.classList.remove('alarm');
 
-      if (isError) {
+      card.className = "zone-card";
+      dot.className = "badge-icon";
+
+      if (isOffline) {
+        card.classList.add("offline");
+        dot.classList.add("off");
+        txt.innerText = "OFFLINE";
+        txt.style.color = "var(--offline)";
+      } else if (isError) {
+        dot.style.background = "var(--warn)";
+        dot.style.boxShadow = "none";
         txt.innerText = "FAULT";
         txt.style.color = "var(--warn)";
       } else if (isWet) {
-        card.classList.add('alarm');
+        card.classList.add("alarm");
+        dot.classList.add("wet");
         txt.innerText = "LEAK";
         txt.style.color = "var(--alarm)";
       } else {
@@ -448,8 +515,8 @@
       }
     }
 
-    // Poll every 1200ms
-    setInterval(pollBlynk, 1200);
+    // Poll Blynk every 1.5 seconds
+    setInterval(pollBlynk, 1500);
     pollBlynk();
   </script>
 </body>
