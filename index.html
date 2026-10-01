@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>LeakGuard Pro</title>
+
+  <!-- MQTT Paho Client over WebSockets -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #070b14;
+      --card-bg: rgba(21, 30, 50, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --safe: #00f090;
+      --safe-glow: rgba(0, 240, 144, 0.25);
+      --alarm: #ff2a55;
+      --alarm-glow: rgba(255, 42, 85, 0.5);
+      --warn: #ffb800;
+      --text: #f1f5f9;
+      --sub: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+      overflow-x: hidden;
+    }
+
+    /* Glassmorphism Header */
+    .app-header {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 12px 18px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .connection-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--sub);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--alarm);
+      box-shadow: 0 0 8px var(--alarm);
+      transition: all 0.3s ease;
+    }
+    .dot.connected {
+      background: var(--safe);
+      box-shadow: 0 0 8px var(--safe);
+    }
+
+    /* Master Shield Display */
+    .status-orb-container {
+      width: 220px;
+      height: 220px;
+      margin: 10px auto 26px auto;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .orb-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid var(--safe);
+      box-shadow: 0 0 35px var(--safe-glow);
+      animation: breathe 3s infinite alternate ease-in-out;
+      transition: all 0.5s ease;
+    }
+    .orb-ring.alarm {
+      border-color: var(--alarm);
+      box-shadow: 0 0 50px var(--alarm-glow);
+      animation: pulse-rapid 0.8s infinite ease-in-out;
+    }
+    .orb-ring.error {
+      border-color: var(--warn);
+      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
+      animation: none;
+    }
+
+    @keyframes breathe {
+      0% { transform: scale(0.96); opacity: 0.7; }
+      100% { transform: scale(1.02); opacity: 1; }
+    }
+    @keyframes pulse-rapid {
+      0% { transform: scale(0.92); opacity: 0.6; }
+      50% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(0.92); opacity: 0.6; }
+    }
+
+    .master-icon {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 8px;
+      transition: fill 0.3s ease;
+    }
+    .master-status-text {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* Zone Grid */
+    .zone-container {
+      width: 100%;
+      max-width: 440px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .zone-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .zone-card.alarm {
+      border-color: var(--alarm);
+      background: rgba(255, 42, 85, 0.12);
+      box-shadow: 0 0 20px rgba(255, 42, 85, 0.25);
+    }
+    .zone-header {
+      font-size: 0.72rem;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .zone-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .badge-icon {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--safe);
+      box-shadow: 0 0 8px var(--safe);
+    }
+    .zone-card.alarm .badge-icon {
+      background: var(--alarm);
+      box-shadow: 0 0 10px var(--alarm);
+      animation: blink 0.6s infinite alternate;
+    }
+    @keyframes blink {
+      from { opacity: 0.3; }
+      to { opacity: 1; }
+    }
+
+    /* Fullscreen Emergency Pop-Up Alert Modal */
+    #emergencyModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 0, 4, 0.92);
+      backdrop-filter: blur(20px);
+      z-index: 999;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .alarm-symbol {
+      width: 90px;
+      height: 90px;
+      fill: var(--alarm);
+      filter: drop-shadow(0 0 25px var(--alarm));
+      animation: pulse-rapid 0.6s infinite ease-in-out;
+      margin-bottom: 18px;
+    }
+    .emergency-title {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+    .emergency-zones {
+      font-size: 1.1rem;
+      color: var(--alarm);
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    .dismiss-btn {
+      background: var(--alarm);
+      color: #fff;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px 36px;
+      border-radius: 30px;
+      box-shadow: 0 0 30px var(--alarm-glow);
+      cursor: pointer;
+    }
+
+    /* Mute Audio Button */
+    .audio-btn {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Header -->
+  <div class="app-header">
+    <div class="brand-title">LEAKGUARD PRO</div>
+    <div class="connection-badge">
+      <div class="dot" id="connDot"></div>
+      <span id="connText">Connecting...</span>
+    </div>
+  </div>
+
+  <!-- Master Center Visual Ring -->
+  <div class="status-orb-container">
+    <div class="orb-ring" id="orbRing"></div>
+    <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
+    <div class="master-status-text" id="masterStatusText" style="color: var(--safe);">SYSTEM SECURE</div>
+  </div>
+
+  <!-- 4 Monitored Zones -->
+  <div class="zone-container">
+    <div class="zone-card" id="cardInlet">
+      <div class="zone-header">Inlet Plumbing</div>
+      <div class="zone-badge"><div class="badge-icon"></div><span id="txtInlet">DRY</span></div>
+    </div>
+    <div class="zone-card" id="cardOutlet">
+      <div class="zone-header">Outlet Plumbing</div>
+      <div class="zone-badge"><div class="badge-icon"></div><span id="txtOutlet">DRY</span></div>
+    </div>
+    <div class="zone-card" id="cardUnit">
+      <div class="zone-header">Unit Plumbing</div>
+      <div class="zone-badge"><div class="badge-icon"></div><span id="txtUnit">DRY</span></div>
+    </div>
+    <div class="zone-card" id="cardExt">
+      <div class="zone-header">External RS485</div>
+      <div class="zone-badge"><div class="badge-icon"></div><span id="txtExt">DRY</span></div>
+    </div>
+  </div>
+
+  <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Tap to Enable High-Decibel Siren</button>
+
+  <!-- High-Contrast Emergency Modal (Pop-Up & Clear Effect) -->
+  <div id="emergencyModal">
+    <svg class="alarm-symbol" viewBox="0 0 24 24">
+      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+    </svg>
+    <div class="emergency-title">CRITICAL LEAK DETECTED</div>
+    <div class="emergency-zones" id="modalZoneText">BREACH: INLET</div>
+    <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
+  </div>
+
+  <script>
+    // ==========================================
+    // MQTT BROKER CONFIGURATION (WebSockets)
+    // ==========================================
+    const MQTT_CONFIG = {
+      host: "broker.hivemq.com", // Public test broker (replace with your broker/EMQX/Mosquitto host)
+      port: 8000,                // WebSocket Port (e.g., 8083/8000 for non-SSL, 8884/8084 for WSS)
+      path: "/mqtt",
+      topic: "leaksense/telemetry",
+      clientId: "AndroidClient_" + Math.random().toString(16).substr(2, 8)
+    };
+
+    let client = null;
+    let audioCtx = null;
+    let alarmInterval = null;
+    let isSilenced = false;
+
+    // Web Audio Sound Synthesizer (No external MP3 required)
+    function enableAudioEngine() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      document.getElementById('soundBtn').style.display = 'none';
+    }
+
+    function playSirenTone() {
+      if (!audioCtx || isSilenced) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.28);
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+
+      // Trigger native Android haptic vibration pattern
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+
+    function dismissModal() {
+      document.getElementById('emergencyModal').style.display = 'none';
+      isSilenced = true;
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+
+    // MQTT Connection Handler
+    function connectMQTT() {
+      client = new Paho.MQTT.Client(MQTT_CONFIG.host, Number(MQTT_CONFIG.port), MQTT_CONFIG.path, MQTT_CONFIG.clientId);
+
+      client.onConnectionLost = (resp) => {
+        document.getElementById('connDot').className = "dot";
+        document.getElementById('connText').innerText = "Reconnecting...";
+        setTimeout(connectMQTT, 3000);
+      };
+
+      client.onMessageArrived = (message) => {
+        try {
+          const data = JSON.parse(message.payloadString);
+          updateUI(data);
+        } catch (e) {
+          console.error("Payload error:", e);
+        }
+      };
+
+      client.connect({
+        onSuccess: () => {
+          document.getElementById('connDot').className = "dot connected";
+          document.getElementById('connText').innerText = "LIVE MQTT";
+          client.subscribe(MQTT_CONFIG.topic);
+        },
+        onFailure: () => {
+          document.getElementById('connDot').className = "dot";
+          document.getElementById('connText').innerText = "Broker Failed";
+          setTimeout(connectMQTT, 5000);
+        },
+        useSSL: false // Change to true if using wss:// (Port 8884 / 8084)
+      });
+    }
+
+    // Dynamic UI Update
+    function updateUI(data) {
+      const orb = document.getElementById('orbRing');
+      const icon = document.getElementById('masterIcon');
+      const title = document.getElementById('masterStatusText');
+
+      // Update Individual Zones
+      setCardState('cardInlet', 'txtInlet', data.inlet);
+      setCardState('cardOutlet', 'txtOutlet', data.outlet);
+      setCardState('cardUnit', 'txtUnit', data.unit);
+      setCardState('cardExt', 'txtExt', data.external === true, data.external === null);
+
+      // Evaluate Alarm Hierarchy
+      if (data.has_leak) {
+        orb.className = "orb-ring alarm";
+        icon.style.fill = "var(--alarm)";
+        icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+        title.innerText = "CRITICAL LEAK";
+        title.style.color = "var(--alarm)";
+
+        // Identify breached zones
+        let breached = [];
+        if (data.inlet) breached.push("INLET");
+        if (data.outlet) breached.push("OUTLET");
+        if (data.unit) breached.push("UNIT");
+        if (data.external === true) breached.push("EXTERNAL");
+
+        // Trigger Pop-Up Alert Modal
+        if (!isSilenced) {
+          const modal = document.getElementById('emergencyModal');
+          document.getElementById('modalZoneText').innerText = "ZONE: " + breached.join(" + ");
+          modal.style.display = "flex";
+
+          if (!alarmInterval) {
+            playSirenTone();
+            alarmInterval = setInterval(playSirenTone, 800);
+          }
+        }
+      } else {
+        // Reset Silenced status when dry
+        isSilenced = false;
+        document.getElementById('emergencyModal').style.display = 'none';
+        if (alarmInterval) {
+          clearInterval(alarmInterval);
+          alarmInterval = null;
+        }
+
+        if (data.has_error) {
+          orb.className = "orb-ring error";
+          icon.style.fill = "var(--warn)";
+          icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
+          title.innerText = "SENSOR FAULT";
+          title.style.color = "var(--warn)";
+        } else {
+          orb.className = "orb-ring";
+          icon.style.fill = "var(--safe)";
+          icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
+          title.innerText = "SYSTEM SECURE";
+          title.style.color = "var(--safe)";
+        }
+      }
+    }
+
+    function setCardState(cardId, txtId, isWet, isError = false) {
+      const card = document.getElementById(cardId);
+      const txt = document.getElementById(txtId);
+      card.classList.remove('alarm');
+
+      if (isError) {
+        txt.innerText = "FAULT";
+        txt.style.color = "var(--warn)";
+      } else if (isWet) {
+        card.classList.add('alarm');
+        txt.innerText = "LEAK";
+        txt.style.color = "var(--alarm)";
+      } else {
+        txt.innerText = "DRY";
+        txt.style.color = "var(--safe)";
+      }
+    }
+
+    window.onload = connectMQTT;
+  </script>
+</body>
+</html>
