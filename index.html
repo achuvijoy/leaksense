@@ -418,7 +418,7 @@
     let alarmInterval = null;
     let isSilenced = false;
 
-    // Heartbeat Watchdog variables
+    // Heartbeat Watchdog Configuration
     let lastHeartbeat = null;
     let staleCounter = 0;
 
@@ -469,7 +469,7 @@
 
     async function pollBlynk() {
       try {
-        // Fetch pins including V1 (Heartbeat) in parallel
+        // Parallel fetch of all datastreams including V1 (Watchdog Counter)
         const [v0, v1, v3, v4, v5, v6] = await Promise.all([
           fetchPin('v0'),
           fetchPin('v1'),
@@ -479,23 +479,23 @@
           fetchPin('v6')
         ]);
 
-        // Watchdog: Check if V1 (heartbeat counter) is advancing
-        if (v1 === lastHeartbeat) {
+        // Watchdog Verification: V1 counter rolls from 1 to 999
+        if (v1 !== 0 && v1 === lastHeartbeat) {
           staleCounter++;
-        } else {
+        } else if (v1 !== 0) {
           staleCounter = 0;
           lastHeartbeat = v1;
         }
 
-        // If the heartbeat doesn't change for 4 polling cycles (~4s), device is OFF
-        if (staleCounter >= 4 || v1 === 0) {
+        // Switch to Hardware Offline if stagnant for 12 consecutive cycles (~12 seconds)
+        if (staleCounter >= 12) {
           applyOfflineState();
           return;
         }
 
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE BLR1";
-        document.getElementById('lastSeenText').innerText = "Hardware Online & Streaming";
+        document.getElementById('lastSeenText').innerText = "Hardware Online & Telemetry Active";
 
         const inletWet = (v3 === 1);
         const outletWet = (v4 === 1);
@@ -633,6 +633,7 @@
       }
     }
 
+    // High-resolution poll rate (1000ms)
     setInterval(pollBlynk, 1000);
     pollBlynk();
   </script>
