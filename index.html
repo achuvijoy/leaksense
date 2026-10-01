@@ -418,6 +418,10 @@
     let alarmInterval = null;
     let isSilenced = false;
 
+    // Heartbeat Watchdog variables
+    let lastHeartbeat = null;
+    let staleCounter = 0;
+
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -452,17 +456,6 @@
       }
     }
 
-    async function checkIsDeviceOnline() {
-      try {
-        const res = await fetch(`${BLYNK_HOST}/isDeviceConnected?token=${BLYNK_AUTH}`);
-        if (!res.ok) return false;
-        const text = await res.text();
-        return text.trim().toLowerCase() === "true";
-      } catch (e) {
-        return false;
-      }
-    }
-
     async function fetchPin(pin) {
       try {
         const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&${pin}`);
@@ -476,26 +469,33 @@
 
     async function pollBlynk() {
       try {
-        // 1. Check official hardware connection status first
-        const isOnline = await checkIsDeviceOnline();
-
-        if (!isOnline) {
-          applyOfflineState();
-          return;
-        }
-
-        // 2. Fetch live pins in parallel
-        const [v0, v3, v4, v5, v6] = await Promise.all([
+        // Fetch pins including V1 (Heartbeat) in parallel
+        const [v0, v1, v3, v4, v5, v6] = await Promise.all([
           fetchPin('v0'),
+          fetchPin('v1'),
           fetchPin('v3'),
           fetchPin('v4'),
           fetchPin('v5'),
           fetchPin('v6')
         ]);
 
+        // Watchdog: Check if V1 (heartbeat counter) is advancing
+        if (v1 === lastHeartbeat) {
+          staleCounter++;
+        } else {
+          staleCounter = 0;
+          lastHeartbeat = v1;
+        }
+
+        // If the heartbeat doesn't change for 4 polling cycles (~4s), device is OFF
+        if (staleCounter >= 4 || v1 === 0) {
+          applyOfflineState();
+          return;
+        }
+
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE BLR1";
-        document.getElementById('lastSeenText').innerText = "Device Online & Telemetry Active";
+        document.getElementById('lastSeenText').innerText = "Hardware Online & Streaming";
 
         const inletWet = (v3 === 1);
         const outletWet = (v4 === 1);
@@ -561,7 +561,6 @@
       setZoneCard('cardUnit', 'txtUnit', state.unit, false, false);
       setZoneCard('cardExt', 'txtExt', state.external, state.external_err, false);
 
-      // Collect specific breached zones
       let breached = [];
       if (state.inlet) breached.push("INLET PLUMBING");
       if (state.outlet) breached.push("OUTLET PLUMBING");
