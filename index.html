@@ -19,7 +19,7 @@
       --alarm-glow: rgba(255, 42, 85, 0.6);
       --warn: #ffb800;
       --warn-bg: rgba(255, 184, 0, 0.15);
-      --warn-glow: rgba(255, 184, 0, 0.35);
+      --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
     }
@@ -76,8 +76,8 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--warn);
-      box-shadow: 0 0 8px var(--warn);
+      background: var(--alarm);
+      box-shadow: 0 0 8px var(--alarm);
       transition: all 0.3s ease;
     }
     .dot.connected {
@@ -149,7 +149,12 @@
     }
     .orb-ring.error {
       border-color: var(--warn);
-      box-shadow: 0 0 35px var(--warn-glow);
+      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
+      animation: none;
+    }
+    .orb-ring.offline {
+      border-color: var(--offline);
+      box-shadow: 0 0 20px rgba(100, 116, 139, 0.2);
       animation: none;
     }
 
@@ -198,13 +203,17 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s ease;
     }
     .zone-card.alarm {
       border-color: var(--alarm);
       background: var(--alarm-bg);
       box-shadow: 0 0 25px var(--alarm-glow);
       animation: cardPulse 0.9s infinite alternate ease-in-out;
+    }
+    .zone-card.offline {
+      opacity: 0.6;
+      border-color: rgba(255, 255, 255, 0.04);
     }
     @keyframes cardPulse {
       from { transform: scale(0.99); }
@@ -245,6 +254,11 @@
       background: var(--warn-bg);
       color: var(--warn);
       border-color: var(--warn);
+    }
+    .zone-card.offline .zone-status-badge {
+      background: rgba(100, 116, 139, 0.15);
+      color: var(--offline);
+      border-color: rgba(100, 116, 139, 0.3);
     }
 
     .badge-icon {
@@ -398,8 +412,7 @@
 
   <script>
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
-    // Connects directly to the BLR1 cluster to match the template region
-    const BLYNK_BASE_URL = "https://blr1.blynk.cloud/external/api/get?token=" + BLYNK_AUTH;
+    const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
 
     let audioCtx = null;
     let alarmInterval = null;
@@ -439,9 +452,20 @@
       }
     }
 
+    async function checkIsDeviceOnline() {
+      try {
+        const res = await fetch(`${BLYNK_HOST}/isDeviceConnected?token=${BLYNK_AUTH}`);
+        if (!res.ok) return false;
+        const text = await res.text();
+        return text.trim().toLowerCase() === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
     async function fetchPin(pin) {
       try {
-        const res = await fetch(`${BLYNK_BASE_URL}&${pin}`);
+        const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&${pin}`);
         if (!res.ok) return 0;
         const text = await res.text();
         return Number(text.replace(/["\r\n\s]/g, '')) || 0;
@@ -452,7 +476,15 @@
 
     async function pollBlynk() {
       try {
-        // Parallel fetch of all 5 status pins directly from BLR1
+        // 1. Check official hardware connection status first
+        const isOnline = await checkIsDeviceOnline();
+
+        if (!isOnline) {
+          applyOfflineState();
+          return;
+        }
+
+        // 2. Fetch live pins in parallel
         const [v0, v3, v4, v5, v6] = await Promise.all([
           fetchPin('v0'),
           fetchPin('v3'),
@@ -463,7 +495,7 @@
 
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE BLR1";
-        document.getElementById('lastSeenText').innerText = "Realtime Sync Active";
+        document.getElementById('lastSeenText').innerText = "Device Online & Telemetry Active";
 
         const inletWet = (v3 === 1);
         const outletWet = (v4 === 1);
@@ -484,9 +516,36 @@
         });
 
       } catch (err) {
-        document.getElementById('connDot').className = "dot";
-        document.getElementById('connText').innerText = "CONNECTING...";
-        document.getElementById('lastSeenText').innerText = "Reaching BLR1 Cluster...";
+        applyOfflineState();
+      }
+    }
+
+    function applyOfflineState() {
+      document.getElementById('connDot').className = "dot";
+      document.getElementById('connText').innerText = "DEVICE OFFLINE";
+
+      const orb = document.getElementById('orbRing');
+      const icon = document.getElementById('masterIcon');
+      const title = document.getElementById('masterStatusText');
+      const lastSeen = document.getElementById('lastSeenText');
+
+      orb.className = "orb-ring offline";
+      icon.style.fill = "var(--offline)";
+      icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
+      title.innerText = "HARDWARE OFFLINE";
+      title.style.color = "var(--offline)";
+      lastSeen.innerText = "ESP32 Disconnected";
+
+      setZoneCard('cardInlet', 'txtInlet', false, false, true);
+      setZoneCard('cardOutlet', 'txtOutlet', false, false, true);
+      setZoneCard('cardUnit', 'txtUnit', false, false, true);
+      setZoneCard('cardExt', 'txtExt', false, false, true);
+
+      document.getElementById('alertBanner').style.display = "none";
+      document.getElementById('emergencyModal').style.display = "none";
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
       }
     }
 
@@ -497,10 +556,10 @@
       const alertBanner = document.getElementById('alertBanner');
       const bannerZoneText = document.getElementById('bannerZoneText');
 
-      setZoneCard('cardInlet', 'txtInlet', state.inlet, false);
-      setZoneCard('cardOutlet', 'txtOutlet', state.outlet, false);
-      setZoneCard('cardUnit', 'txtUnit', state.unit, false);
-      setZoneCard('cardExt', 'txtExt', state.external, state.external_err);
+      setZoneCard('cardInlet', 'txtInlet', state.inlet, false, false);
+      setZoneCard('cardOutlet', 'txtOutlet', state.outlet, false, false);
+      setZoneCard('cardUnit', 'txtUnit', state.unit, false, false);
+      setZoneCard('cardExt', 'txtExt', state.external, state.external_err, false);
 
       // Collect specific breached zones
       let breached = [];
@@ -533,7 +592,7 @@
       } else {
         isSilenced = false;
         alertBanner.style.display = "none";
-        document.getElementById('emergencyModal').style.display = 'none';
+        document.getElementById('emergencyModal').style.display = "none";
         if (alarmInterval) {
           clearInterval(alarmInterval);
           alarmInterval = null;
@@ -555,13 +614,16 @@
       }
     }
 
-    function setZoneCard(cardId, txtId, isWet, isError) {
+    function setZoneCard(cardId, txtId, isWet, isError, isOffline) {
       const card = document.getElementById(cardId);
       const txt = document.getElementById(txtId);
 
-      card.classList.remove('alarm', 'fault');
+      card.classList.remove('alarm', 'fault', 'offline');
 
-      if (isError) {
+      if (isOffline) {
+        card.classList.add('offline');
+        txt.innerText = "OFFLINE";
+      } else if (isError) {
         card.classList.add('fault');
         txt.innerText = "FAULT";
       } else if (isWet) {
