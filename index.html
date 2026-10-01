@@ -43,6 +43,7 @@
       overflow-x: hidden;
     }
 
+    /* Top App Header */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -85,6 +86,7 @@
       box-shadow: 0 0 10px var(--safe);
     }
 
+    /* Active Breached Zones Banner */
     .alert-banner {
       width: 100%;
       max-width: 440px;
@@ -123,15 +125,18 @@
       color: #ffffff;
     }
 
+    /* Master Center Visual Ring */
     .status-orb-container {
-      width: 200px;
-      height: 200px;
+      width: 220px;
+      height: 220px;
       margin: 8px auto 20px auto;
       position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      padding: 0 16px;
+      text-align: center;
     }
     .orb-ring {
       position: absolute;
@@ -169,24 +174,34 @@
     }
 
     .master-icon {
-      width: 52px;
-      height: 52px;
+      width: 46px;
+      height: 46px;
       margin-bottom: 6px;
       transition: fill 0.3s ease;
     }
     .master-status-text {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 800;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
       text-align: center;
+      max-width: 170px;
+      line-height: 1.25;
+      word-wrap: break-word;
     }
     .last-seen-text {
       font-size: 0.72rem;
       color: var(--sub);
-      margin-top: 4px;
+      margin-top: 5px;
+      max-width: 170px;
+      line-height: 1.2;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
+    /* 4-Zone Cards Grid */
     .zone-container {
       width: 100%;
       max-width: 440px;
@@ -287,6 +302,7 @@
       margin-bottom: 12px;
     }
 
+    /* Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -374,7 +390,7 @@
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
     <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-    <div class="last-seen-text" id="lastSeenText">Syncing Cluster...</div>
+    <div class="last-seen-text" id="lastSeenText">Syncing BLR1 Cluster...</div>
   </div>
 
   <div class="zone-container">
@@ -467,11 +483,23 @@
       }
     }
 
+    async function fetchIP() {
+      try {
+        const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&v2`);
+        if (!res.ok) return "";
+        const text = await res.text();
+        return text.replace(/["\r\n\s]/g, '').trim();
+      } catch (e) {
+        return "";
+      }
+    }
+
     async function pollBlynk() {
       try {
-        const [v0, v1, v3, v4, v5, v6] = await Promise.all([
+        const [v0, v1, v2, v3, v4, v5, v6] = await Promise.all([
           fetchPin('v0'),
           fetchPin('v1'),
+          fetchIP(),
           fetchPin('v3'),
           fetchPin('v4'),
           fetchPin('v5'),
@@ -489,7 +517,7 @@
           staleCounter++;
         }
 
-        // Flag offline only after 8 consecutive identical reads (~12 seconds)
+        // Flag offline only after 8 consecutive identical reads (~12s)
         if (staleCounter >= 8) {
           applyOfflineState();
           return;
@@ -497,7 +525,12 @@
 
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE TFS IEC";
-        document.getElementById('lastSeenText').innerText = "Hardware Online & Telemetry Active";
+
+        // Display unit IP on both PC and mobile
+        const ipDisplay = (v2 && v2 !== "0.0.0.0" && v2 !== "OFFLINE")
+          ? `Unit IP: ${v2}`
+          : "Hardware Online & Telemetry Active";
+        document.getElementById('lastSeenText').innerText = ipDisplay;
 
         const inletWet = (v3 === 1);
         const outletWet = (v4 === 1);
@@ -534,7 +567,9 @@
       orb.className = "orb-ring offline";
       icon.style.fill = "var(--offline)";
       icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-      title.innerText = "HARDWARE OFFLINE";
+
+      // 2-line format neatly contained inside the circular ring
+      title.innerHTML = "HARDWARE<br>OFFLINE";
       title.style.color = "var(--offline)";
       lastSeen.innerText = "ESP32 Disconnected";
 
@@ -635,7 +670,6 @@
       }
     }
 
-    // Refresh every 1.5 seconds
     setInterval(pollBlynk, 1500);
     pollBlynk();
   </script>
