@@ -85,7 +85,6 @@
       box-shadow: 0 0 10px var(--safe);
     }
 
-    /* Active Breached Zones Banner */
     .alert-banner {
       width: 100%;
       max-width: 440px;
@@ -124,7 +123,6 @@
       color: #ffffff;
     }
 
-    /* Master Status Ring */
     .status-orb-container {
       width: 200px;
       height: 200px;
@@ -184,7 +182,6 @@
       margin-top: 4px;
     }
 
-    /* 4-Zone Cards Grid */
     .zone-container {
       width: 100%;
       max-width: 440px;
@@ -276,7 +273,6 @@
       margin-bottom: 12px;
     }
 
-    /* Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -364,7 +360,7 @@
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
     <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-    <div class="last-seen-text" id="lastSeenText">Syncing Blynk Cloud...</div>
+    <div class="last-seen-text" id="lastSeenText">Syncing BLR1 Cluster...</div>
   </div>
 
   <div class="zone-container">
@@ -402,6 +398,8 @@
 
   <script>
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
+    // Connects directly to the BLR1 cluster to match the template region
+    const BLYNK_BASE_URL = "https://blr1.blynk.cloud/external/api/get?token=" + BLYNK_AUTH;
 
     let audioCtx = null;
     let alarmInterval = null;
@@ -441,76 +439,54 @@
       }
     }
 
-    // Helper: Safely extracts pin value regardless of casing (v0 vs V0)
-    function getPin(data, pinNum) {
-      if (!data) return 0;
-      const keyLow = 'v' + pinNum;
-      const keyUp = 'V' + pinNum;
-      const val = data[keyLow] !== undefined ? data[keyLow] : data[keyUp];
-      return Number(val) || 0;
-    }
-
-    async function fetchAllPins() {
-      // 1. Primary: Use Blynk's official getAll endpoint
+    async function fetchPin(pin) {
       try {
-        const res = await fetch(`https://blynk.cloud/external/api/getAll?token=${BLYNK_AUTH}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json && (json.v0 !== undefined || json.V0 !== undefined)) {
-            return json;
-          }
-        }
-      } catch (e) {}
-
-      // 2. Reliable Fallback: Parallel individual pin fetch
-      const pins = ['v0', 'v2', 'v3', 'v4', 'v5', 'v6'];
-      const result = {};
-      await Promise.all(pins.map(async (pin) => {
-        try {
-          const r = await fetch(`https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&${pin}`);
-          if (r.ok) {
-            const raw = await r.text();
-            result[pin] = raw.replace(/["\r\n]/g, '').trim();
-          }
-        } catch (e) {}
-      }));
-      return result;
+        const res = await fetch(`${BLYNK_BASE_URL}&${pin}`);
+        if (!res.ok) return 0;
+        const text = await res.text();
+        return Number(text.replace(/["\r\n\s]/g, '')) || 0;
+      } catch (e) {
+        return 0;
+      }
     }
 
     async function pollBlynk() {
       try {
-        const data = await fetchAllPins();
-
-        if (Object.keys(data).length === 0) {
-          throw new Error("No data returned");
-        }
+        // Parallel fetch of all 5 status pins directly from BLR1
+        const [v0, v3, v4, v5, v6] = await Promise.all([
+          fetchPin('v0'),
+          fetchPin('v3'),
+          fetchPin('v4'),
+          fetchPin('v5'),
+          fetchPin('v6')
+        ]);
 
         document.getElementById('connDot').className = "dot connected";
-        document.getElementById('connText').innerText = "LIVE CLOUD";
+        document.getElementById('connText').innerText = "LIVE BLR1";
+        document.getElementById('lastSeenText').innerText = "Realtime Sync Active";
 
-        const ip = data.v2 || data.V2;
-        document.getElementById('lastSeenText').innerText = ip && ip !== "0.0.0.0" ? `ESP32 IP: ${ip}` : "Device Online";
-
-        const v0 = getPin(data, 0);
-        const v3 = getPin(data, 3);
-        const v4 = getPin(data, 4);
-        const v5 = getPin(data, 5);
-        const v6 = getPin(data, 6);
+        const inletWet = (v3 === 1);
+        const outletWet = (v4 === 1);
+        const unitWet = (v5 === 1);
+        const extWet = (v6 === 1);
+        const extErr = (v6 === 2);
+        const hasLeak = (v0 === 1) || inletWet || outletWet || unitWet || extWet;
+        const hasError = (v0 === 2) || extErr;
 
         updateUI({
-          has_leak: (v0 === 1),
-          has_error: (v0 === 2),
-          inlet: (v3 === 1),
-          outlet: (v4 === 1),
-          unit: (v5 === 1),
-          external: (v6 === 1),
-          external_err: (v6 === 2)
+          has_leak: hasLeak,
+          has_error: hasError,
+          inlet: inletWet,
+          outlet: outletWet,
+          unit: unitWet,
+          external: extWet,
+          external_err: extErr
         });
 
       } catch (err) {
         document.getElementById('connDot').className = "dot";
         document.getElementById('connText').innerText = "CONNECTING...";
-        document.getElementById('lastSeenText').innerText = "Reaching Blynk Cloud...";
+        document.getElementById('lastSeenText').innerText = "Reaching BLR1 Cluster...";
       }
     }
 
@@ -521,7 +497,6 @@
       const alertBanner = document.getElementById('alertBanner');
       const bannerZoneText = document.getElementById('bannerZoneText');
 
-      // Update Individual Cards
       setZoneCard('cardInlet', 'txtInlet', state.inlet, false);
       setZoneCard('cardOutlet', 'txtOutlet', state.outlet, false);
       setZoneCard('cardUnit', 'txtUnit', state.unit, false);
@@ -534,7 +509,6 @@
       if (state.unit) breached.push("UNIT PLUMBING");
       if (state.external) breached.push("EXTERNAL RS485");
 
-      // Critical Leak
       if (state.has_leak || breached.length > 0) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
@@ -542,7 +516,7 @@
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
-        const zoneString = breached.length ? breached.join(" + ") : "ACTIVE LEAK DETECTED";
+        const zoneString = breached.length > 0 ? breached.join(" + ") : "ACTIVE LEAK DETECTED";
         bannerZoneText.innerText = zoneString;
         alertBanner.style.display = "flex";
 
@@ -559,13 +533,12 @@
       } else {
         isSilenced = false;
         alertBanner.style.display = "none";
-        document.getElementById('emergencyModal').style.display = "none";
+        document.getElementById('emergencyModal').style.display = 'none';
         if (alarmInterval) {
           clearInterval(alarmInterval);
           alarmInterval = null;
         }
 
-        // Sensor Fault
         if (state.has_error) {
           orb.className = "orb-ring error";
           icon.style.fill = "var(--warn)";
@@ -593,13 +566,13 @@
         txt.innerText = "FAULT";
       } else if (isWet) {
         card.classList.add('alarm');
-        txt.innerText = "⚠️️ LEAK DETECTED";
+        txt.innerText = "⚠️ LEAK DETECTED";
       } else {
         txt.innerText = "✓ DRY / SAFE";
       }
     }
 
-    setInterval(pollBlynk, 1200);
+    setInterval(pollBlynk, 1000);
     pollBlynk();
   </script>
 </body>
