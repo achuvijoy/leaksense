@@ -6,9 +6,6 @@
   <meta name="theme-color" content="#070b14">
   <title>LeakGuard Pro</title>
 
-  <!-- Paho MQTT Client over WebSockets -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
   <style>
     :root {
       --bg: #070b14;
@@ -68,8 +65,8 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--alarm);
-      box-shadow: 0 0 8px var(--alarm);
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
       transition: all 0.3s ease;
     }
     .dot.connected {
@@ -145,8 +142,6 @@
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      position: relative;
-      overflow: hidden;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .zone-card.alarm {
@@ -228,7 +223,6 @@
       background: var(--alarm);
       color: #fff;
       border: none;
-      outline: none;
       font-size: 1rem;
       font-weight: 700;
       padding: 14px 34px;
@@ -304,15 +298,9 @@
   </div>
 
   <script>
-    const MQTT_CONFIG = {
-      host: "broker.hivemq.com",
-      port: 8884,
-      path: "/mqtt",
-      topic: "leaksense/telemetry",
-      clientId: "AndroidClient_" + Math.random().toString(16).substr(2, 8)
-    };
+    const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
+    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v3&v4&v5&v6`;
 
-    let client = null;
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
@@ -349,51 +337,53 @@
       alarmInterval = null;
     }
 
-    function connectMQTT() {
-      client = new Paho.MQTT.Client(MQTT_CONFIG.host, Number(MQTT_CONFIG.port), MQTT_CONFIG.path, MQTT_CONFIG.clientId);
+    async function pollBlynk() {
+      try {
+        const response = await fetch(BLYNK_API_URL);
+        if (!response.ok) throw new Error("HTTP error " + response.status);
+        const data = await response.json();
 
-      client.onConnectionLost = (resp) => {
+        document.getElementById('connDot').className = "dot connected";
+        document.getElementById('connText').innerText = "LIVE CLOUD";
+
+        // Virtual Pins from blynk_manager.py:
+        // v0: Master Code (1=Leak, 0=Normal, 2=Error)
+        // v3: Inlet, v4: Outlet, v5: Unit, v6: External
+        const hasLeak = (Number(data.v0) === 1);
+        const hasError = (Number(data.v0) === 2);
+        const inletWet = (Number(data.v3) === 1);
+        const outletWet = (Number(data.v4) === 1);
+        const unitWet = (Number(data.v5) === 1);
+        const extWet = (Number(data.v6) === 1);
+        const extErr = (Number(data.v6) === 2);
+
+        updateUI({
+          has_leak: hasLeak,
+          has_error: hasError,
+          inlet: inletWet,
+          outlet: outletWet,
+          unit: unitWet,
+          external: extWet,
+          external_err: extErr
+        });
+
+      } catch (err) {
         document.getElementById('connDot').className = "dot";
-        document.getElementById('connText').innerText = "Reconnecting...";
-        setTimeout(connectMQTT, 3000);
-      };
-
-      client.onMessageArrived = (message) => {
-        try {
-          const data = JSON.parse(message.payloadString);
-          updateUI(data);
-        } catch (e) {
-          console.error("Payload parse error:", e);
-        }
-      };
-
-      client.connect({
-        onSuccess: () => {
-          document.getElementById('connDot').className = "dot connected";
-          document.getElementById('connText').innerText = "LIVE MQTT";
-          client.subscribe(MQTT_CONFIG.topic);
-        },
-        onFailure: (err) => {
-          console.error("MQTT Connect Error:", err);
-          document.getElementById('connDot').className = "dot";
-          document.getElementById('connText').innerText = "Broker Failed";
-          setTimeout(connectMQTT, 5000);
-        },
-        useSSL: true
-      });
+        document.getElementById('connText').innerText = "Syncing...";
+      }
     }
 
-    function updateUI(data) {
+    function updateUI(state) {
       const orb = document.getElementById('orbRing');
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
 
-      setCardState('cardInlet', 'txtInlet', data.inlet);
-      setCardState('cardOutlet', 'txtOutlet', data.outlet);
-      setCardState('cardUnit', 'txtUnit', data.unit);
-      setCardState('cardExt', 'txtExt', data.external === true, data.external === null);
+      setCardState('cardInlet', 'txtInlet', state.inlet);
+      setCardState('cardOutlet', 'txtOutlet', state.outlet);
+      setCardState('cardUnit', 'txtUnit', state.unit);
+      setCardState('cardExt', 'txtExt', state.external, state.external_err);
 
-      if (data.has_leak) {
+      if (state.has_leak) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
         icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
@@ -401,14 +391,14 @@
         title.style.color = "var(--alarm)";
 
         let breached = [];
-        if (data.inlet) breached.push("INLET");
-        if (data.outlet) breached.push("OUTLET");
-        if (data.unit) breached.push("UNIT");
-        if (data.external === true) breached.push("EXTERNAL");
+        if (state.inlet) breached.push("INLET");
+        if (state.outlet) breached.push("OUTLET");
+        if (state.unit) breached.push("UNIT");
+        if (state.external) breached.push("EXTERNAL");
 
         if (!isSilenced) {
           const modal = document.getElementById('emergencyModal');
-          document.getElementById('modalZoneText').innerText = "ZONE: " + breached.join(" + ");
+          document.getElementById('modalZoneText').innerText = "ZONE: " + (breached.length ? breached.join(" + ") : "ACTIVE LEAK");
           modal.style.display = "flex";
 
           if (!alarmInterval) {
@@ -424,7 +414,7 @@
           alarmInterval = null;
         }
 
-        if (data.has_error) {
+        if (state.has_error) {
           orb.className = "orb-ring error";
           icon.style.fill = "var(--warn)";
           icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
@@ -458,7 +448,9 @@
       }
     }
 
-    window.onload = connectMQTT;
+    // Poll every 1200ms
+    setInterval(pollBlynk, 1200);
+    pollBlynk();
   </script>
 </body>
 </html>
