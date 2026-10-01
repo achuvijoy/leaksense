@@ -418,7 +418,7 @@
     let alarmInterval = null;
     let isSilenced = false;
 
-    // Heartbeat Watchdog Configuration
+    // Heartbeat Watchdog
     let lastHeartbeat = null;
     let staleCounter = 0;
 
@@ -469,7 +469,6 @@
 
     async function pollBlynk() {
       try {
-        // Parallel fetch of all datastreams including V1 (Watchdog Counter)
         const [v0, v1, v3, v4, v5, v6] = await Promise.all([
           fetchPin('v0'),
           fetchPin('v1'),
@@ -479,16 +478,19 @@
           fetchPin('v6')
         ]);
 
-        // Watchdog Verification: V1 counter rolls from 1 to 999
-        if (v1 !== 0 && v1 === lastHeartbeat) {
-          staleCounter++;
-        } else if (v1 !== 0) {
-          staleCounter = 0;
+        // Watchdog Verification: V1 counter rolls 1-999
+        if (lastHeartbeat === null) {
           lastHeartbeat = v1;
+          staleCounter = 0;
+        } else if (v1 !== lastHeartbeat) {
+          lastHeartbeat = v1;
+          staleCounter = 0;
+        } else {
+          staleCounter++;
         }
 
-        // Switch to Hardware Offline if stagnant for 12 consecutive cycles (~12 seconds)
-        if (staleCounter >= 12) {
+        // Flag offline only after 8 consecutive identical reads (~12 seconds)
+        if (staleCounter >= 8) {
           applyOfflineState();
           return;
         }
@@ -633,8 +635,8 @@
       }
     }
 
-    // High-resolution poll rate (1000ms)
-    setInterval(pollBlynk, 1000);
+    // Refresh every 1.5 seconds
+    setInterval(pollBlynk, 1500);
     pollBlynk();
   </script>
 </body>
