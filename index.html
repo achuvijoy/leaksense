@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0f1d">
+  <meta name="theme-color" content="#070b14">
   <title>LeakGuard Pro</title>
 
-  <!-- MQTT Paho Client over WebSockets -->
+  <!-- Paho MQTT Client over WebSockets -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
   <style>
@@ -36,7 +36,6 @@
       overflow-x: hidden;
     }
 
-    /* Glassmorphism Header */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -78,7 +77,6 @@
       box-shadow: 0 0 8px var(--safe);
     }
 
-    /* Master Shield Display */
     .status-orb-container {
       width: 220px;
       height: 220px;
@@ -132,7 +130,6 @@
       text-transform: uppercase;
     }
 
-    /* Zone Grid */
     .zone-container {
       width: 100%;
       max-width: 440px;
@@ -188,11 +185,10 @@
       to { opacity: 1; }
     }
 
-    /* Fullscreen Emergency Pop-Up Alert Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
-      background: rgba(10, 0, 4, 0.92);
+      background: rgba(10, 0, 4, 0.94);
       backdrop-filter: blur(20px);
       z-index: 999;
       display: none;
@@ -216,7 +212,7 @@
       margin-bottom: 18px;
     }
     .emergency-title {
-      font-size: 2rem;
+      font-size: 1.85rem;
       font-weight: 900;
       color: #fff;
       margin-bottom: 6px;
@@ -235,13 +231,12 @@
       outline: none;
       font-size: 1rem;
       font-weight: 700;
-      padding: 14px 36px;
+      padding: 14px 34px;
       border-radius: 30px;
       box-shadow: 0 0 30px var(--alarm-glow);
       cursor: pointer;
     }
 
-    /* Mute Audio Button */
     .audio-btn {
       width: 100%;
       max-width: 440px;
@@ -262,7 +257,6 @@
 </head>
 <body>
 
-  <!-- App Header -->
   <div class="app-header">
     <div class="brand-title">LEAKGUARD PRO</div>
     <div class="connection-badge">
@@ -271,7 +265,6 @@
     </div>
   </div>
 
-  <!-- Master Center Visual Ring -->
   <div class="status-orb-container">
     <div class="orb-ring" id="orbRing"></div>
     <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
@@ -280,7 +273,6 @@
     <div class="master-status-text" id="masterStatusText" style="color: var(--safe);">SYSTEM SECURE</div>
   </div>
 
-  <!-- 4 Monitored Zones -->
   <div class="zone-container">
     <div class="zone-card" id="cardInlet">
       <div class="zone-header">Inlet Plumbing</div>
@@ -302,7 +294,6 @@
 
   <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Tap to Enable High-Decibel Siren</button>
 
-  <!-- High-Contrast Emergency Modal (Pop-Up & Clear Effect) -->
   <div id="emergencyModal">
     <svg class="alarm-symbol" viewBox="0 0 24 24">
       <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
@@ -313,12 +304,9 @@
   </div>
 
   <script>
-    // ==========================================
-    // MQTT BROKER CONFIGURATION (WebSockets)
-    // ==========================================
     const MQTT_CONFIG = {
-      host: "broker.hivemq.com", // Public test broker (replace with your broker/EMQX/Mosquitto host)
-      port: 8000,                // WebSocket Port (e.g., 8083/8000 for non-SSL, 8884/8084 for WSS)
+      host: "broker.hivemq.com",
+      port: 8884,
       path: "/mqtt",
       topic: "leaksense/telemetry",
       clientId: "AndroidClient_" + Math.random().toString(16).substr(2, 8)
@@ -329,7 +317,6 @@
     let alarmInterval = null;
     let isSilenced = false;
 
-    // Web Audio Sound Synthesizer (No external MP3 required)
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -338,19 +325,20 @@
 
     function playSirenTone() {
       if (!audioCtx || isSilenced) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(950, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.28);
-      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.3);
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.28);
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {}
 
-      // Trigger native Android haptic vibration pattern
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
 
@@ -361,7 +349,6 @@
       alarmInterval = null;
     }
 
-    // MQTT Connection Handler
     function connectMQTT() {
       client = new Paho.MQTT.Client(MQTT_CONFIG.host, Number(MQTT_CONFIG.port), MQTT_CONFIG.path, MQTT_CONFIG.clientId);
 
@@ -376,7 +363,7 @@
           const data = JSON.parse(message.payloadString);
           updateUI(data);
         } catch (e) {
-          console.error("Payload error:", e);
+          console.error("Payload parse error:", e);
         }
       };
 
@@ -386,28 +373,26 @@
           document.getElementById('connText').innerText = "LIVE MQTT";
           client.subscribe(MQTT_CONFIG.topic);
         },
-        onFailure: () => {
+        onFailure: (err) => {
+          console.error("MQTT Connect Error:", err);
           document.getElementById('connDot').className = "dot";
           document.getElementById('connText').innerText = "Broker Failed";
           setTimeout(connectMQTT, 5000);
         },
-        useSSL: false // Change to true if using wss:// (Port 8884 / 8084)
+        useSSL: true
       });
     }
 
-    // Dynamic UI Update
     function updateUI(data) {
       const orb = document.getElementById('orbRing');
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
 
-      // Update Individual Zones
       setCardState('cardInlet', 'txtInlet', data.inlet);
       setCardState('cardOutlet', 'txtOutlet', data.outlet);
       setCardState('cardUnit', 'txtUnit', data.unit);
       setCardState('cardExt', 'txtExt', data.external === true, data.external === null);
 
-      // Evaluate Alarm Hierarchy
       if (data.has_leak) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
@@ -415,14 +400,12 @@
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
-        // Identify breached zones
         let breached = [];
         if (data.inlet) breached.push("INLET");
         if (data.outlet) breached.push("OUTLET");
         if (data.unit) breached.push("UNIT");
         if (data.external === true) breached.push("EXTERNAL");
 
-        // Trigger Pop-Up Alert Modal
         if (!isSilenced) {
           const modal = document.getElementById('emergencyModal');
           document.getElementById('modalZoneText').innerText = "ZONE: " + breached.join(" + ");
@@ -434,7 +417,6 @@
           }
         }
       } else {
-        // Reset Silenced status when dry
         isSilenced = false;
         document.getElementById('emergencyModal').style.display = 'none';
         if (alarmInterval) {
