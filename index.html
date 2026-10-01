@@ -43,7 +43,6 @@
       overflow-x: hidden;
     }
 
-    /* Top App Header */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -202,8 +201,6 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      position: relative;
-      overflow: hidden;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .zone-card.alarm {
@@ -231,7 +228,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 800;
       padding: 6px 10px;
       border-radius: 10px;
@@ -261,7 +258,6 @@
       box-shadow: 0 0 8px currentColor;
     }
 
-    /* Sound Activator Button */
     .audio-btn {
       width: 100%;
       max-width: 440px;
@@ -280,7 +276,7 @@
       margin-bottom: 12px;
     }
 
-    /* Fullscreen Emergency Pop-Up Modal */
+    /* Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -312,7 +308,7 @@
       background: rgba(255, 42, 85, 0.2);
       border: 2px solid var(--alarm);
       border-radius: 16px;
-      padding: 12px 20px;
+      padding: 14px 20px;
       margin-bottom: 24px;
       max-width: 320px;
       width: 100%;
@@ -321,9 +317,9 @@
       font-size: 0.75rem;
       font-weight: 800;
       text-transform: uppercase;
-      color: var(--sub);
+      color: #ff99aa;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
     .emergency-zones {
       font-size: 1.25rem;
@@ -346,7 +342,6 @@
 </head>
 <body>
 
-  <!-- App Header -->
   <div class="app-header">
     <div class="brand-title">LEAKGUARD PRO</div>
     <div class="connection-badge">
@@ -355,26 +350,23 @@
     </div>
   </div>
 
-  <!-- Active Breached Zones Banner (Visible only during leak) -->
   <div class="alert-banner" id="alertBanner">
-    <div class="alert-banner-icon">⚠️️</div>
+    <div class="alert-banner-icon">⚠️</div>
     <div class="alert-banner-text">
-      <div class="alert-banner-title">Active Leak Location</div>
-      <div class="alert-banner-zones" id="bannerZoneText">INLET ZONE</div>
+      <div class="alert-banner-title">Breached Zone Alert</div>
+      <div class="alert-banner-zones" id="bannerZoneText">INLET PLUMBING</div>
     </div>
   </div>
 
-  <!-- Master Center Visual Ring -->
   <div class="status-orb-container">
     <div class="orb-ring" id="orbRing"></div>
     <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
     <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-    <div class="last-seen-text" id="lastSeenText">Establishing Cloud Sync...</div>
+    <div class="last-seen-text" id="lastSeenText">Syncing Blynk Cloud...</div>
   </div>
 
-  <!-- 4 Monitored Zones -->
   <div class="zone-container">
     <div class="zone-card" id="cardInlet">
       <div class="zone-header">Inlet Plumbing</div>
@@ -396,22 +388,20 @@
 
   <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Tap to Enable High-Decibel Siren</button>
 
-  <!-- High-Contrast Emergency Modal -->
   <div id="emergencyModal">
     <svg class="alarm-symbol" viewBox="0 0 24 24">
       <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
     </svg>
     <div class="emergency-title">CRITICAL LEAK DETECTED</div>
     <div class="emergency-zones-box">
-      <div class="emergency-zones-title">Breached Zone(s)</div>
-      <div class="emergency-zones" id="modalZoneText">INLET</div>
+      <div class="emergency-zones-title">Affected Location(s)</div>
+      <div class="emergency-zones" id="modalZoneText">INLET PLUMBING</div>
     </div>
     <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
   </div>
 
   <script>
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
-    const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v2&v3&v4&v5&v6`;
 
     let audioCtx = null;
     let alarmInterval = null;
@@ -451,34 +441,70 @@
       }
     }
 
+    // Helper: Safely extracts pin value regardless of casing (v0 vs V0)
+    function getPin(data, pinNum) {
+      if (!data) return 0;
+      const keyLow = 'v' + pinNum;
+      const keyUp = 'V' + pinNum;
+      const val = data[keyLow] !== undefined ? data[keyLow] : data[keyUp];
+      return Number(val) || 0;
+    }
+
+    async function fetchAllPins() {
+      // 1. Primary: Use Blynk's official getAll endpoint
+      try {
+        const res = await fetch(`https://blynk.cloud/external/api/getAll?token=${BLYNK_AUTH}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && (json.v0 !== undefined || json.V0 !== undefined)) {
+            return json;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Reliable Fallback: Parallel individual pin fetch
+      const pins = ['v0', 'v2', 'v3', 'v4', 'v5', 'v6'];
+      const result = {};
+      await Promise.all(pins.map(async (pin) => {
+        try {
+          const r = await fetch(`https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&${pin}`);
+          if (r.ok) {
+            const raw = await r.text();
+            result[pin] = raw.replace(/["\r\n]/g, '').trim();
+          }
+        } catch (e) {}
+      }));
+      return result;
+    }
+
     async function pollBlynk() {
       try {
-        const response = await fetch(BLYNK_API_URL);
-        if (!response.ok) throw new Error("HTTP status: " + response.status);
-        const data = await response.json();
+        const data = await fetchAllPins();
+
+        if (Object.keys(data).length === 0) {
+          throw new Error("No data returned");
+        }
 
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE CLOUD";
 
-        const ipDisplay = data.v2 && data.v2 !== "0.0.0.0" ? `Device IP: ${data.v2}` : "Connected to Blynk Cloud";
-        document.getElementById('lastSeenText').innerText = ipDisplay;
+        const ip = data.v2 || data.V2;
+        document.getElementById('lastSeenText').innerText = ip && ip !== "0.0.0.0" ? `ESP32 IP: ${ip}` : "Device Online";
 
-        const hasLeak = (Number(data.v0) === 1);
-        const hasError = (Number(data.v0) === 2);
-        const inletWet = (Number(data.v3) === 1);
-        const outletWet = (Number(data.v4) === 1);
-        const unitWet = (Number(data.v5) === 1);
-        const extWet = (Number(data.v6) === 1);
-        const extErr = (Number(data.v6) === 2);
+        const v0 = getPin(data, 0);
+        const v3 = getPin(data, 3);
+        const v4 = getPin(data, 4);
+        const v5 = getPin(data, 5);
+        const v6 = getPin(data, 6);
 
         updateUI({
-          has_leak: hasLeak,
-          has_error: hasError,
-          inlet: inletWet,
-          outlet: outletWet,
-          unit: unitWet,
-          external: extWet,
-          external_err: extErr
+          has_leak: (v0 === 1),
+          has_error: (v0 === 2),
+          inlet: (v3 === 1),
+          outlet: (v4 === 1),
+          unit: (v5 === 1),
+          external: (v6 === 1),
+          external_err: (v6 === 2)
         });
 
       } catch (err) {
@@ -501,22 +527,22 @@
       setZoneCard('cardUnit', 'txtUnit', state.unit, false);
       setZoneCard('cardExt', 'txtExt', state.external, state.external_err);
 
-      // Collect names of all wet zones
+      // Collect specific breached zones
       let breached = [];
       if (state.inlet) breached.push("INLET PLUMBING");
       if (state.outlet) breached.push("OUTLET PLUMBING");
       if (state.unit) breached.push("UNIT PLUMBING");
       if (state.external) breached.push("EXTERNAL RS485");
 
-      if (state.has_leak) {
+      // Critical Leak
+      if (state.has_leak || breached.length > 0) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
         icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
-        // Show Prominent Banner
-        const zoneString = breached.length ? breached.join(" + ") : "ACTIVE LEAK";
+        const zoneString = breached.length ? breached.join(" + ") : "ACTIVE LEAK DETECTED";
         bannerZoneText.innerText = zoneString;
         alertBanner.style.display = "flex";
 
@@ -533,12 +559,13 @@
       } else {
         isSilenced = false;
         alertBanner.style.display = "none";
-        document.getElementById('emergencyModal').style.display = 'none';
+        document.getElementById('emergencyModal').style.display = "none";
         if (alarmInterval) {
           clearInterval(alarmInterval);
           alarmInterval = null;
         }
 
+        // Sensor Fault
         if (state.has_error) {
           orb.className = "orb-ring error";
           icon.style.fill = "var(--warn)";
@@ -566,7 +593,7 @@
         txt.innerText = "FAULT";
       } else if (isWet) {
         card.classList.add('alarm');
-        txt.innerText = "⚠️ LEAK DETECTED";
+        txt.innerText = "⚠️️ LEAK DETECTED";
       } else {
         txt.innerText = "✓ DRY / SAFE";
       }
