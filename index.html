@@ -12,12 +12,14 @@
       --card-bg: rgba(21, 30, 50, 0.75);
       --card-border: rgba(255, 255, 255, 0.08);
       --safe: #00f090;
+      --safe-bg: rgba(0, 240, 144, 0.08);
       --safe-glow: rgba(0, 240, 144, 0.28);
       --alarm: #ff2a55;
-      --alarm-glow: rgba(255, 42, 85, 0.55);
+      --alarm-bg: rgba(255, 42, 85, 0.22);
+      --alarm-glow: rgba(255, 42, 85, 0.6);
       --warn: #ffb800;
+      --warn-bg: rgba(255, 184, 0, 0.15);
       --warn-glow: rgba(255, 184, 0, 0.35);
-      --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
     }
@@ -37,7 +39,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px 16px;
+      padding: 16px;
       overflow-x: hidden;
     }
 
@@ -48,7 +50,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       padding: 14px 18px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -83,16 +85,51 @@
       background: var(--safe);
       box-shadow: 0 0 10px var(--safe);
     }
-    .dot.offline {
-      background: var(--alarm);
-      box-shadow: 0 0 10px var(--alarm);
+
+    /* Active Breached Zones Banner */
+    .alert-banner {
+      width: 100%;
+      max-width: 440px;
+      background: var(--alarm-bg);
+      border: 2px solid var(--alarm);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 0 20px var(--alarm-glow);
+      animation: bannerPulse 1s infinite alternate ease-in-out;
+    }
+    @keyframes bannerPulse {
+      from { transform: scale(0.99); opacity: 0.9; }
+      to { transform: scale(1.01); opacity: 1; }
+    }
+    .alert-banner-icon {
+      font-size: 1.5rem;
+    }
+    .alert-banner-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .alert-banner-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--alarm);
+      letter-spacing: 0.5px;
+    }
+    .alert-banner-zones {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
     }
 
     /* Master Status Ring */
     .status-orb-container {
-      width: 220px;
-      height: 220px;
-      margin: 10px auto 24px auto;
+      width: 200px;
+      height: 200px;
+      margin: 8px auto 20px auto;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -118,11 +155,6 @@
       box-shadow: 0 0 35px var(--warn-glow);
       animation: none;
     }
-    .orb-ring.offline {
-      border-color: var(--offline);
-      box-shadow: 0 0 20px rgba(100, 116, 139, 0.2);
-      animation: none;
-    }
 
     @keyframes breathe {
       0% { transform: scale(0.96); opacity: 0.75; }
@@ -135,13 +167,13 @@
     }
 
     .master-icon {
-      width: 60px;
-      height: 60px;
-      margin-bottom: 8px;
+      width: 52px;
+      height: 52px;
+      margin-bottom: 6px;
       transition: fill 0.3s ease;
     }
     .master-status-text {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 800;
       letter-spacing: 1px;
       text-transform: uppercase;
@@ -150,8 +182,7 @@
     .last-seen-text {
       font-size: 0.72rem;
       color: var(--sub);
-      margin-top: 6px;
-      letter-spacing: 0.3px;
+      margin-top: 4px;
     }
 
     /* 4-Zone Cards Grid */
@@ -161,61 +192,73 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .zone-card {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
+      border: 2px solid var(--card-border);
       border-radius: 16px;
-      padding: 14px 16px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .zone-card.alarm {
       border-color: var(--alarm);
-      background: rgba(255, 42, 85, 0.14);
-      box-shadow: 0 0 22px rgba(255, 42, 85, 0.3);
+      background: var(--alarm-bg);
+      box-shadow: 0 0 25px var(--alarm-glow);
+      animation: cardPulse 0.9s infinite alternate ease-in-out;
+    }
+    @keyframes cardPulse {
+      from { transform: scale(0.99); }
+      to { transform: scale(1.02); }
     }
     .zone-header {
-      font-size: 0.72rem;
+      font-size: 0.75rem;
+      font-weight: 700;
       color: var(--sub);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 6px;
     }
-    .zone-badge {
+    .zone-card.alarm .zone-header {
+      color: #ff99aa;
+    }
+
+    .zone-status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-size: 0.95rem;
-      font-weight: 700;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: var(--safe-bg);
+      color: var(--safe);
+      border: 1px solid rgba(0, 240, 144, 0.3);
+      width: fit-content;
+      transition: all 0.3s ease;
     }
+    .zone-card.alarm .zone-status-badge {
+      background: var(--alarm);
+      color: #ffffff;
+      border-color: var(--alarm);
+      box-shadow: 0 0 12px var(--alarm);
+    }
+    .zone-card.fault .zone-status-badge {
+      background: var(--warn-bg);
+      color: var(--warn);
+      border-color: var(--warn);
+    }
+
     .badge-icon {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: var(--safe);
-      box-shadow: 0 0 8px var(--safe);
-      transition: all 0.3s ease;
-    }
-    .badge-icon.wet {
-      background: var(--alarm);
-      box-shadow: 0 0 10px var(--alarm);
-      animation: blink 0.6s infinite alternate;
-    }
-    .badge-icon.warn {
-      background: var(--warn);
-      box-shadow: 0 0 8px var(--warn);
-    }
-    .badge-icon.off {
-      background: var(--offline);
-      box-shadow: none;
-    }
-
-    @keyframes blink {
-      from { opacity: 0.35; }
-      to { opacity: 1; }
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
     }
 
     /* Sound Activator Button */
@@ -235,10 +278,6 @@
       justify-content: center;
       gap: 8px;
       margin-bottom: 12px;
-      transition: background 0.2s ease;
-    }
-    .audio-btn:active {
-      background: rgba(255, 255, 255, 0.1);
     }
 
     /* Fullscreen Emergency Pop-Up Modal */
@@ -254,32 +293,43 @@
       align-items: center;
       padding: 24px;
       text-align: center;
-      animation: modalFadeIn 0.3s ease-out;
-    }
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
     }
     .alarm-symbol {
-      width: 90px;
-      height: 90px;
+      width: 80px;
+      height: 80px;
       fill: var(--alarm);
       filter: drop-shadow(0 0 25px var(--alarm));
       animation: pulse-rapid 0.6s infinite ease-in-out;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     .emergency-title {
-      font-size: 1.85rem;
+      font-size: 1.8rem;
       font-weight: 900;
       color: #ffffff;
       margin-bottom: 8px;
-      letter-spacing: 1px;
+    }
+    .emergency-zones-box {
+      background: rgba(255, 42, 85, 0.2);
+      border: 2px solid var(--alarm);
+      border-radius: 16px;
+      padding: 12px 20px;
+      margin-bottom: 24px;
+      max-width: 320px;
+      width: 100%;
+    }
+    .emergency-zones-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--sub);
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
     }
     .emergency-zones {
-      font-size: 1.1rem;
-      color: var(--alarm);
-      font-weight: 700;
-      margin-bottom: 26px;
+      font-size: 1.25rem;
+      color: #ffffff;
+      font-weight: 900;
+      letter-spacing: 0.5px;
     }
     .dismiss-btn {
       background: var(--alarm);
@@ -291,10 +341,6 @@
       border-radius: 30px;
       box-shadow: 0 0 30px var(--alarm-glow);
       cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-    .dismiss-btn:active {
-      transform: scale(0.97);
     }
   </style>
 </head>
@@ -306,6 +352,15 @@
     <div class="connection-badge">
       <div class="dot" id="connDot"></div>
       <span id="connText">Connecting...</span>
+    </div>
+  </div>
+
+  <!-- Active Breached Zones Banner (Visible only during leak) -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-banner-icon">⚠️️</div>
+    <div class="alert-banner-text">
+      <div class="alert-banner-title">Active Leak Location</div>
+      <div class="alert-banner-zones" id="bannerZoneText">INLET ZONE</div>
     </div>
   </div>
 
@@ -323,19 +378,19 @@
   <div class="zone-container">
     <div class="zone-card" id="cardInlet">
       <div class="zone-header">Inlet Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon" id="dotInlet"></div><span id="txtInlet">SYNCING</span></div>
+      <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtInlet">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardOutlet">
       <div class="zone-header">Outlet Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon" id="dotOutlet"></div><span id="txtOutlet">SYNCING</span></div>
+      <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtOutlet">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardUnit">
       <div class="zone-header">Unit Plumbing</div>
-      <div class="zone-badge"><div class="badge-icon" id="dotUnit"></div><span id="txtUnit">SYNCING</span></div>
+      <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">SYNCING</span></div>
     </div>
     <div class="zone-card" id="cardExt">
       <div class="zone-header">External RS485</div>
-      <div class="zone-badge"><div class="badge-icon" id="dotExt"></div><span id="txtExt">SYNCING</span></div>
+      <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">SYNCING</span></div>
     </div>
   </div>
 
@@ -347,21 +402,21 @@
       <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
     </svg>
     <div class="emergency-title">CRITICAL LEAK DETECTED</div>
-    <div class="emergency-zones" id="modalZoneText">BREACH: INLET</div>
+    <div class="emergency-zones-box">
+      <div class="emergency-zones-title">Breached Zone(s)</div>
+      <div class="emergency-zones" id="modalZoneText">INLET</div>
+    </div>
     <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
   </div>
 
   <script>
-    // Blynk Cloud REST API Configuration
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
-    // Polls only valid active virtual datastreams (v0, v2, v3, v4, v5, v6)
     const BLYNK_API_URL = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH}&v0&v2&v3&v4&v5&v6`;
 
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
 
-    // Web Audio Synthesizer (Zero External Audio Assets Required)
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -384,7 +439,6 @@
         osc.stop(audioCtx.currentTime + 0.3);
       } catch (e) {}
 
-      // Native Android Haptic Pulse
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
 
@@ -400,18 +454,15 @@
     async function pollBlynk() {
       try {
         const response = await fetch(BLYNK_API_URL);
-        if (!response.ok) throw new Error("HTTP Status: " + response.status);
+        if (!response.ok) throw new Error("HTTP status: " + response.status);
         const data = await response.json();
 
-        // Connection Indicator
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE CLOUD";
 
-        // Display IP or Status
         const ipDisplay = data.v2 && data.v2 !== "0.0.0.0" ? `Device IP: ${data.v2}` : "Connected to Blynk Cloud";
         document.getElementById('lastSeenText').innerText = ipDisplay;
 
-        // Parse Virtual Pins
         const hasLeak = (Number(data.v0) === 1);
         const hasError = (Number(data.v0) === 2);
         const inletWet = (Number(data.v3) === 1);
@@ -441,13 +492,22 @@
       const orb = document.getElementById('orbRing');
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
+      const alertBanner = document.getElementById('alertBanner');
+      const bannerZoneText = document.getElementById('bannerZoneText');
 
-      setZoneCard('cardInlet', 'dotInlet', 'txtInlet', state.inlet, false);
-      setZoneCard('cardOutlet', 'dotOutlet', 'txtOutlet', state.outlet, false);
-      setZoneCard('cardUnit', 'dotUnit', 'txtUnit', state.unit, false);
-      setZoneCard('cardExt', 'dotExt', 'txtExt', state.external, state.external_err);
+      // Update Individual Cards
+      setZoneCard('cardInlet', 'txtInlet', state.inlet, false);
+      setZoneCard('cardOutlet', 'txtOutlet', state.outlet, false);
+      setZoneCard('cardUnit', 'txtUnit', state.unit, false);
+      setZoneCard('cardExt', 'txtExt', state.external, state.external_err);
 
-      // 1. Critical Leak Alarm
+      // Collect names of all wet zones
+      let breached = [];
+      if (state.inlet) breached.push("INLET PLUMBING");
+      if (state.outlet) breached.push("OUTLET PLUMBING");
+      if (state.unit) breached.push("UNIT PLUMBING");
+      if (state.external) breached.push("EXTERNAL RS485");
+
       if (state.has_leak) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
@@ -455,15 +515,14 @@
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
-        let breached = [];
-        if (state.inlet) breached.push("INLET");
-        if (state.outlet) breached.push("OUTLET");
-        if (state.unit) breached.push("UNIT");
-        if (state.external) breached.push("EXTERNAL");
+        // Show Prominent Banner
+        const zoneString = breached.length ? breached.join(" + ") : "ACTIVE LEAK";
+        bannerZoneText.innerText = zoneString;
+        alertBanner.style.display = "flex";
 
         if (!isSilenced) {
           const modal = document.getElementById('emergencyModal');
-          document.getElementById('modalZoneText').innerText = "ZONE: " + (breached.length ? breached.join(" + ") : "ACTIVE LEAK");
+          document.getElementById('modalZoneText').innerText = zoneString;
           modal.style.display = "flex";
 
           if (!alarmInterval) {
@@ -472,24 +531,21 @@
           }
         }
       } else {
-        // Reset mute status when dry
         isSilenced = false;
+        alertBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = 'none';
         if (alarmInterval) {
           clearInterval(alarmInterval);
           alarmInterval = null;
         }
 
-        // 2. RS485 Communication Error
         if (state.has_error) {
           orb.className = "orb-ring error";
           icon.style.fill = "var(--warn)";
           icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
           title.innerText = "SENSOR FAULT";
           title.style.color = "var(--warn)";
-        }
-        // 3. Normal / Secure
-        else {
+        } else {
           orb.className = "orb-ring";
           icon.style.fill = "var(--safe)";
           icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
@@ -499,30 +555,23 @@
       }
     }
 
-    function setZoneCard(cardId, dotId, txtId, isWet, isError) {
+    function setZoneCard(cardId, txtId, isWet, isError) {
       const card = document.getElementById(cardId);
-      const dot = document.getElementById(dotId);
       const txt = document.getElementById(txtId);
 
-      card.className = "zone-card";
-      dot.className = "badge-icon";
+      card.classList.remove('alarm', 'fault');
 
       if (isError) {
-        dot.classList.add("warn");
+        card.classList.add('fault');
         txt.innerText = "FAULT";
-        txt.style.color = "var(--warn)";
       } else if (isWet) {
-        card.classList.add("alarm");
-        dot.classList.add("wet");
-        txt.innerText = "LEAK";
-        txt.style.color = "var(--alarm)";
+        card.classList.add('alarm');
+        txt.innerText = "⚠️ LEAK DETECTED";
       } else {
-        txt.innerText = "DRY";
-        txt.style.color = "var(--safe)";
+        txt.innerText = "✓ DRY / SAFE";
       }
     }
 
-    // Poll Blynk Cloud every 1.2 seconds
     setInterval(pollBlynk, 1200);
     pollBlynk();
   </script>
