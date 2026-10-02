@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#070b14">
-  <title>LeakGuard Pro - Live Dashboard</title>
+  <title>LeakGuard Pro - Multi-Zone Dashboard</title>
 
   <!-- Google Firebase Realtime Database SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -27,6 +27,7 @@
       --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
+      --brand-red: #ef4444;
     }
 
     * {
@@ -48,46 +49,66 @@
       overflow-x: hidden;
     }
 
-    /* Outer Wrapper: Expands gracefully on PC while remaining compact on mobile */
-    .app-container {
+    /* Outer Wrapper: Fits mobile comfortably and expands up to 1100px on PC */
+    .app-wrapper {
       width: 100%;
-      max-width: 1100px;
+      max-width: 440px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      align-items: center;
+      transition: max-width 0.3s ease;
     }
 
-    /* Top App Header */
+    /* App Header with Thermo Scientific branding */
     .app-header {
       width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
+      margin-bottom: 12px;
+      padding: 14px 18px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 16px;
       backdrop-filter: blur(12px);
     }
+    .brand-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .thermo-logo {
+      font-size: 1.50rem;
+      font-weight: 700;
+      color: var(--brand-red);
+      text-transform: lowercase;
+      line-height: 1.1;
+      letter-spacing: -0.2px;
+    }
+    .thermo-logo span {
+      font-weight: 300;
+      color: #ffffff;
+      margin-left: 2px;
+    }
     .brand-title {
-      font-size: 1.25rem;
+      font-size: 1.05rem;
       font-weight: 800;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.5px;
       background: linear-gradient(135deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      margin-top: 2px;
     }
     .connection-badge {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
+      gap: 7px;
+      font-size: 0.75rem;
       font-weight: 600;
       color: var(--sub);
     }
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--alarm);
       box-shadow: 0 0 8px var(--alarm);
@@ -98,35 +119,14 @@
       box-shadow: 0 0 10px var(--safe);
     }
 
-    /* Two-Column Responsive Layout */
-    .dashboard-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-      width: 100%;
-    }
-
-    @media (min-width: 768px) {
-      .dashboard-layout {
-        grid-template-columns: 380px 1fr;
-        align-items: start;
-      }
-    }
-
-    .column-left, .column-right {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      width: 100%;
-    }
-
-    /* Alert Banners */
+    /* Banners */
     .alert-banner {
       width: 100%;
       background: var(--alarm-bg);
       border: 2px solid var(--alarm);
       border-radius: 14px;
-      padding: 14px 18px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
       display: none;
       align-items: center;
       gap: 12px;
@@ -143,7 +143,8 @@
       background: var(--warn-bg);
       border: 2px solid var(--warn);
       border-radius: 14px;
-      padding: 14px 18px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
       display: none;
       align-items: center;
       gap: 12px;
@@ -151,23 +152,44 @@
     }
     .banner-text { display: flex; flex-direction: column; }
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-    .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 3px; line-height: 1.3; }
+    .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Master Status Card */
-    .status-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 24px 16px;
+    /* Dashboard Layout: Single column on phone, 2-column split on PC */
+    .dashboard-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .left-panel {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .right-panel {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Center Visual Ring */
+    .status-orb-card {
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      margin-bottom: 8px;
     }
 
     .status-orb-container {
       width: 210px;
       height: 210px;
+      margin: 8px auto 18px auto;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -175,7 +197,6 @@
       justify-content: center;
       padding: 0 16px;
       text-align: center;
-      margin-bottom: 12px;
     }
     .orb-ring {
       position: absolute;
@@ -191,10 +212,15 @@
       box-shadow: 0 0 55px var(--alarm-glow);
       animation: pulse-rapid 0.8s infinite ease-in-out;
     }
-    .orb-ring.warn, .orb-ring.error {
+    .orb-ring.warn {
       border-color: var(--warn);
       box-shadow: 0 0 45px var(--warn-glow);
       animation: breathe 2s infinite alternate ease-in-out;
+    }
+    .orb-ring.error {
+      border-color: var(--warn);
+      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
+      animation: none;
     }
     .orb-ring.offline {
       border-color: var(--offline);
@@ -214,34 +240,35 @@
 
     .master-icon { width: 44px; height: 44px; margin-bottom: 6px; }
     .master-status-text {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 800;
       letter-spacing: 0.5px;
       text-transform: uppercase;
       text-align: center;
       line-height: 1.25;
     }
-    .last-seen-text { font-size: 0.75rem; color: var(--sub); margin-top: 5px; }
+    .last-seen-text { font-size: 0.72rem; color: var(--sub); margin-top: 5px; }
 
-    /* Zone Grid: 2 columns on mobile, adapts cleanly on wider PC screens */
+    /* Clickable 4-Zone Grid */
     .zone-container {
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+      margin-bottom: 14px;
     }
     .zone-card {
       background: var(--card-bg);
       border: 2px solid var(--card-border);
       border-radius: 16px;
-      padding: 16px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .zone-card:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.25); }
+    .zone-card:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.2); }
     .zone-card.alarm {
       border-color: var(--alarm);
       background: var(--alarm-bg);
@@ -254,15 +281,15 @@
     .zone-card.offline { opacity: 0.6; }
 
     .zone-top-row { display: flex; justify-content: space-between; align-items: center; }
-    .zone-header { font-size: 0.78rem; font-weight: 700; color: var(--sub); text-transform: uppercase; }
-    .zone-hint { font-size: 0.65rem; color: #38bdf8; font-weight: 600; }
+    .zone-header { font-size: 0.74rem; font-weight: 700; color: var(--sub); text-transform: uppercase; }
+    .zone-hint { font-size: 0.62rem; color: #38bdf8; font-weight: 600; }
     .zone-status-badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.90rem;
+      font-size: 0.88rem;
       font-weight: 800;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 10px;
       background: var(--safe-bg);
       color: var(--safe);
@@ -273,28 +300,29 @@
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 
-    /* Cloud Audit Box */
+    /* Real-Time Cloud Audit Log Table */
     .audit-box {
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 16px;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
       text-align: left;
     }
     .audit-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 700;
       color: var(--sub);
       text-transform: uppercase;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
-    .audit-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
-    .audit-table th { color: var(--sub); padding: 8px 6px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-    .audit-table td { padding: 8px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: var(--text); }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    .audit-table th { color: var(--sub); padding: 4px 6px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .audit-table td { padding: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: var(--text); }
     .tag-warn { color: var(--warn); font-weight: 700; }
     .tag-leak { color: var(--alarm); font-weight: 700; }
 
@@ -303,15 +331,12 @@
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 14px;
+      padding: 12px;
       color: var(--text);
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      margin-bottom: 12px;
     }
     .audio-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
@@ -334,24 +359,24 @@
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      max-width: 480px;
+      max-width: 440px;
       width: 100%;
-      padding: 22px;
+      padding: 20px;
       text-align: left;
     }
-    .modal-title { font-size: 1.15rem; font-weight: 800; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-title { font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .modal-stats { display: flex; gap: 10px; margin-bottom: 14px; }
-    .stat-chip { background: rgba(255, 255, 255, 0.06); padding: 6px 12px; border-radius: 8px; font-size: 0.78rem; }
+    .stat-chip { background: rgba(255, 255, 255, 0.06); padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; }
     .stat-chip span { font-weight: 700; color: #38bdf8; }
     .close-modal-btn {
       width: 100%;
-      margin-top: 16px;
+      margin-top: 14px;
       background: #334155;
       color: #fff;
       border: none;
       border-radius: 10px;
-      padding: 12px;
-      font-size: 0.88rem;
+      padding: 10px;
+      font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
     }
@@ -366,22 +391,70 @@
       cursor: pointer;
       margin-top: 20px;
     }
+
+    /* ----------------------------------------------------
+       RESPONSIVE ENHANCEMENTS FOR PC / TABLET SCREENS
+       ---------------------------------------------------- */
+    @media (min-width: 820px) {
+      body {
+        padding: 24px 20px;
+      }
+      .app-wrapper {
+        max-width: 1060px;
+      }
+      .app-header {
+        padding: 18px 24px;
+        margin-bottom: 16px;
+      }
+      .dashboard-content {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .status-orb-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        padding: 26px 16px 20px 16px;
+      }
+      .left-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .right-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .zone-container {
+        margin-bottom: 0;
+      }
+      .audit-box {
+        margin-bottom: 0;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <div class="app-container">
+  <div class="app-wrapper">
+    <!-- Top Header -->
     <div class="app-header">
-      <div class="brand-title">LEAKGUARD PRO</div>
+      <div class="brand-group">
+        <div class="thermo-logo">thermo<span>scientific</span></div>
+        <div class="brand-title">LEAKGUARD PRO</div>
+      </div>
       <div class="connection-badge">
         <div class="dot" id="connDot"></div>
         <span id="connText">Connecting...</span>
       </div>
     </div>
 
-    <!-- Real-Time Alarm Banner -->
+    <!-- Alarm Banner -->
     <div class="alert-banner" id="alertBanner">
-      <div style="font-size: 1.6rem;">🚨</div>
+      <div style="font-size: 1.5rem;">🚨</div>
       <div class="banner-text">
         <div class="banner-title" style="color: var(--alarm);">Critical Active Leak</div>
         <div class="banner-sub" id="bannerZoneText">INLET PLUMBING</div>
@@ -390,17 +463,19 @@
 
     <!-- Predictive Warning Banner -->
     <div class="pred-banner" id="predBanner">
-      <div style="font-size: 1.6rem;">⚠️</div>
+      <div style="font-size: 1.5rem;">⚠️</div>
       <div class="banner-text">
         <div class="banner-title" style="color: var(--warn);">Predictive Leak Warning</div>
         <div class="banner-sub" id="predZoneText">Repeated micro-leaks logged. Schedule inspection!</div>
       </div>
     </div>
 
-    <div class="dashboard-layout">
-      <!-- Left Column: Master State Orb & Controls -->
-      <div class="column-left">
-        <div class="status-card">
+    <!-- Main Dashboard Responsive Layout -->
+    <div class="dashboard-content">
+      
+      <!-- Left Panel: Center Visual Ring & Audio Toggle -->
+      <div class="left-panel">
+        <div class="status-orb-card">
           <div class="status-orb-container">
             <div class="orb-ring" id="orbRing"></div>
             <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
@@ -414,8 +489,8 @@
         <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Enable High-Decibel Siren</button>
       </div>
 
-      <!-- Right Column: 4 Zones & Firebase Audit Table -->
-      <div class="column-right">
+      <!-- Right Panel: Clickable 4 Zones & Firebase Cloud Audit Table -->
+      <div class="right-panel">
         <div class="zone-container">
           <div class="zone-card" id="cardInlet" onclick="openZoneHistory('inlet', 'Inlet Plumbing')">
             <div class="zone-top-row">
@@ -441,15 +516,16 @@
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">SYNCING</span></div>
           </div>
 
-          <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External RS485')">
+          <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External Plumbing')">
             <div class="zone-top-row">
-              <span class="zone-header">External RS485</span>
+              <span class="zone-header">External Plumbing</span>
               <span class="zone-hint">View Log ❯</span>
             </div>
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">SYNCING</span></div>
           </div>
         </div>
 
+        <!-- Real-time Cloud Audit Log Table -->
         <div class="audit-box">
           <div class="audit-header">
             <span>Cloud Incident Audit Log (Firebase)</span>
@@ -469,6 +545,7 @@
           </table>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -505,6 +582,9 @@
   </div>
 
   <script>
+    // ----------------------------------------------------
+    // FIREBASE REALTIME DATABASE SYNC (DUAL-MODE)
+    // ----------------------------------------------------
     const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
     let activeZoneKey = null;
@@ -517,7 +597,7 @@
       dbRef.on("value", (snapshot) => {
         const data = snapshot.val();
         parseFirebaseData(data);
-      }, () => {
+      }, (error) => {
         fetchDirectREST();
       });
     } catch(e) {
@@ -547,6 +627,9 @@
 
     setInterval(fetchDirectREST, 6000);
 
+    // ----------------------------------------------------
+    // BLYNK LIVE TELEMETRY SETUP (BLR1 CLUSTER)
+    // ----------------------------------------------------
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
     const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
 
@@ -636,15 +719,19 @@
         return;
       }
 
-      tbody.innerHTML = cloudEvents.map(e => `
-        <tr>
-          <td><strong>${e.zone}</strong></td>
-          <td>${e.time}</td>
-          <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
-            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️ RISK (WEAK)' : 'LEAK'}
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = cloudEvents.map(e => {
+        let zoneLabel = e.zone || "EXTERNAL";
+        if (zoneLabel.includes("EXTERNAL")) zoneLabel = "EXTERNAL PLUMBING";
+        return `
+          <tr>
+            <td><strong>${zoneLabel}</strong></td>
+            <td>${e.time}</td>
+            <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
+              ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️ RISK (WEAK)' : 'LEAK'}
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     async function fetchPin(pin) {
@@ -697,7 +784,7 @@
         }
 
         document.getElementById('connDot').className = "dot connected";
-        document.getElementById('connText').innerText = "LIVE TFS IEC";
+        document.getElementById('connText').innerText = "LIVE IEC-DEV-01";
         document.getElementById('lastSeenText').innerText = (v2 && v2 !== "0.0.0.0") ? `Unit IP: ${v2}` : "Telemetry Online";
 
         const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
@@ -757,13 +844,13 @@
       if (state.inlet_code === 1) breached.push("INLET PLUMBING");
       if (state.outlet_code === 1) breached.push("OUTLET PLUMBING");
       if (state.unit_code === 1) breached.push("UNIT PLUMBING");
-      if (state.ext_code === 1) breached.push("EXTERNAL RS485");
+      if (state.ext_code === 1) breached.push("EXTERNAL PLUMBING");
 
       let atRisk = [];
       if (state.inlet_code === 3) atRisk.push("INLET PLUMBING");
       if (state.outlet_code === 3) atRisk.push("OUTLET PLUMBING");
       if (state.unit_code === 3) atRisk.push("UNIT PLUMBING");
-      if (state.ext_code === 3) atRisk.push("EXTERNAL RS485");
+      if (state.ext_code === 3) atRisk.push("EXTERNAL PLUMBING");
 
       if (state.has_leak && breached.length > 0) {
         orb.className = "orb-ring alarm";
@@ -793,7 +880,7 @@
         title.innerText = "PREDICTIVE ALERT";
         title.style.color = "var(--warn)";
 
-        const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL RS485";
+        const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL PLUMBING";
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
       } else if (state.has_error) {
@@ -845,7 +932,7 @@
       }
     }
 
-    setInterval(pollBlynk, 2000);
+    setInterval(pollBlynk, 1000);
     pollBlynk();
   </script>
 </body>
