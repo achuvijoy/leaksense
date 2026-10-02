@@ -44,7 +44,6 @@
       overflow-x: hidden;
     }
 
-    /* Top App Header */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -87,7 +86,7 @@
       box-shadow: 0 0 10px var(--safe);
     }
 
-    /* Critical Active Leak Banner */
+    /* Banners */
     .alert-banner {
       width: 100%;
       max-width: 440px;
@@ -107,7 +106,6 @@
       to { transform: scale(1.01); opacity: 1; }
     }
 
-    /* Predictive Maintenance Warning Banner */
     .pred-banner {
       width: 100%;
       max-width: 440px;
@@ -121,29 +119,43 @@
       gap: 12px;
       box-shadow: 0 0 20px var(--warn-glow);
     }
-    .banner-text {
-      display: flex;
-      flex-direction: column;
-    }
-    .banner-title {
+
+    /* Real-Time Incident Audit Banner */
+    .audit-banner {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      text-align: left;
       font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-    .banner-sub {
-      font-size: 0.90rem;
+    .audit-title {
+      font-size: 0.68rem;
+      color: var(--sub);
+      text-transform: uppercase;
       font-weight: 700;
-      color: #ffffff;
-      margin-top: 2px;
-      line-height: 1.25;
+      margin-bottom: 3px;
+    }
+    .audit-desc {
+      color: #38bdf8;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* Master Center Visual Ring */
+    .banner-text { display: flex; flex-direction: column; }
+    .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
+
+    /* Master Orb Ring */
     .status-orb-container {
-      width: 220px;
-      height: 220px;
-      margin: 8px auto 20px auto;
+      width: 210px;
+      height: 210px;
+      margin: 8px auto 18px auto;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -171,11 +183,6 @@
       box-shadow: 0 0 45px var(--warn-glow);
       animation: breathe 2s infinite alternate ease-in-out;
     }
-    .orb-ring.error {
-      border-color: var(--warn);
-      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
-      animation: none;
-    }
     .orb-ring.offline {
       border-color: var(--offline);
       box-shadow: 0 0 20px rgba(100, 116, 139, 0.2);
@@ -192,35 +199,18 @@
       100% { transform: scale(0.92); opacity: 0.6; }
     }
 
-    .master-icon {
-      width: 46px;
-      height: 46px;
-      margin-bottom: 6px;
-      transition: fill 0.3s ease;
-    }
+    .master-icon { width: 46px; height: 46px; margin-bottom: 6px; }
     .master-status-text {
       font-size: 1.05rem;
       font-weight: 800;
       letter-spacing: 0.5px;
       text-transform: uppercase;
       text-align: center;
-      max-width: 170px;
       line-height: 1.25;
-      word-wrap: break-word;
     }
-    .last-seen-text {
-      font-size: 0.72rem;
-      color: var(--sub);
-      margin-top: 5px;
-      max-width: 170px;
-      line-height: 1.2;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .last-seen-text { font-size: 0.72rem; color: var(--sub); margin-top: 5px; }
 
-    /* 4-Zone Cards Grid */
+    /* Zone Grid */
     .zone-container {
       width: 100%;
       max-width: 440px;
@@ -243,37 +233,19 @@
       border-color: var(--alarm);
       background: var(--alarm-bg);
       box-shadow: 0 0 25px var(--alarm-glow);
-      animation: cardPulse 0.9s infinite alternate ease-in-out;
     }
     .zone-card.warn {
       border-color: var(--warn);
       background: var(--warn-bg);
-      box-shadow: 0 0 20px rgba(255, 184, 0, 0.2);
     }
-    .zone-card.offline {
-      opacity: 0.6;
-      border-color: rgba(255, 255, 255, 0.04);
-    }
-    @keyframes cardPulse {
-      from { transform: scale(0.99); }
-      to { transform: scale(1.02); }
-    }
-    .zone-header {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--sub);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .zone-card.alarm .zone-header {
-      color: #ff99aa;
-    }
+    .zone-card.offline { opacity: 0.6; }
 
+    .zone-header { font-size: 0.75rem; font-weight: 700; color: var(--sub); text-transform: uppercase; }
     .zone-status-badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       font-weight: 800;
       padding: 6px 10px;
       border-radius: 10px;
@@ -281,32 +253,10 @@
       color: var(--safe);
       border: 1px solid rgba(0, 240, 144, 0.3);
       width: fit-content;
-      transition: all 0.3s ease;
     }
-    .zone-card.alarm .zone-status-badge {
-      background: var(--alarm);
-      color: #ffffff;
-      border-color: var(--alarm);
-      box-shadow: 0 0 12px var(--alarm);
-    }
-    .zone-card.warn .zone-status-badge {
-      background: var(--warn-bg);
-      color: var(--warn);
-      border-color: var(--warn);
-    }
-    .zone-card.offline .zone-status-badge {
-      background: rgba(100, 116, 139, 0.15);
-      color: var(--offline);
-      border-color: rgba(100, 116, 139, 0.3);
-    }
-
-    .badge-icon {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 8px currentColor;
-    }
+    .zone-card.alarm .zone-status-badge { background: var(--alarm); color: #ffffff; border-color: var(--alarm); }
+    .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+    .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 
     .audio-btn {
       width: 100%;
@@ -319,14 +269,9 @@
       font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
       margin-bottom: 12px;
     }
 
-    /* Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -340,43 +285,7 @@
       padding: 24px;
       text-align: center;
     }
-    .alarm-symbol {
-      width: 80px;
-      height: 80px;
-      fill: var(--alarm);
-      filter: drop-shadow(0 0 25px var(--alarm));
-      animation: pulse-rapid 0.6s infinite ease-in-out;
-      margin-bottom: 16px;
-    }
-    .emergency-title {
-      font-size: 1.8rem;
-      font-weight: 900;
-      color: #ffffff;
-      margin-bottom: 8px;
-    }
-    .emergency-zones-box {
-      background: rgba(255, 42, 85, 0.2);
-      border: 2px solid var(--alarm);
-      border-radius: 16px;
-      padding: 14px 20px;
-      margin-bottom: 24px;
-      max-width: 320px;
-      width: 100%;
-    }
-    .emergency-zones-title {
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      color: #ff99aa;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    .emergency-zones {
-      font-size: 1.25rem;
-      color: #ffffff;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-    }
+    .emergency-title { font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-bottom: 8px; }
     .dismiss-btn {
       background: var(--alarm);
       color: #ffffff;
@@ -385,8 +294,8 @@
       font-weight: 700;
       padding: 14px 34px;
       border-radius: 30px;
-      box-shadow: 0 0 30px var(--alarm-glow);
       cursor: pointer;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -400,7 +309,6 @@
     </div>
   </div>
 
-  <!-- Real-Time Critical Alarm Banner -->
   <div class="alert-banner" id="alertBanner">
     <div style="font-size: 1.5rem;">🚨</div>
     <div class="banner-text">
@@ -409,13 +317,18 @@
     </div>
   </div>
 
-  <!-- Predictive Maintenance Warning Banner -->
   <div class="pred-banner" id="predBanner">
     <div style="font-size: 1.5rem;">⚠️</div>
     <div class="banner-text">
       <div class="banner-title" style="color: var(--warn);">Predictive Leak Warning</div>
-      <div class="banner-sub" id="predZoneText">High micro-leak frequency logged. Service inspection recommended!</div>
+      <div class="banner-sub" id="predZoneText">Repeated micro-leaks logged. Schedule inspection!</div>
     </div>
+  </div>
+
+  <!-- Real-Time Event Audit Banner -->
+  <div class="audit-banner">
+    <div class="audit-title">Latest Recorded Incident (IST)</div>
+    <div class="audit-desc" id="auditText">System Normal & Synchronized</div>
   </div>
 
   <div class="status-orb-container">
@@ -424,7 +337,7 @@
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
     <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-    <div class="last-seen-text" id="lastSeenText">Syncing BLR1 Cluster...</div>
+    <div class="last-seen-text" id="lastSeenText">Syncing Telemetry...</div>
   </div>
 
   <div class="zone-container">
@@ -446,17 +359,11 @@
     </div>
   </div>
 
-  <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Tap to Enable High-Decibel Siren</button>
+  <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Enable High-Decibel Siren</button>
 
   <div id="emergencyModal">
-    <svg class="alarm-symbol" viewBox="0 0 24 24">
-      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-    </svg>
     <div class="emergency-title">CRITICAL LEAK DETECTED</div>
-    <div class="emergency-zones-box">
-      <div class="emergency-zones-title">Affected Location(s)</div>
-      <div class="emergency-zones" id="modalZoneText">INLET PLUMBING</div>
-    </div>
+    <div style="font-size: 1.1rem; color: #ff99aa; font-weight: 800;" id="modalZoneText">INLET PLUMBING</div>
     <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
   </div>
 
@@ -467,8 +374,6 @@
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
-
-    // Heartbeat Watchdog
     let lastHeartbeat = null;
     let staleCounter = 0;
 
@@ -493,17 +398,12 @@
         osc.start();
         osc.stop(audioCtx.currentTime + 0.3);
       } catch (e) {}
-
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
 
     function dismissModal() {
       document.getElementById('emergencyModal').style.display = 'none';
       isSilenced = true;
-      if (alarmInterval) {
-        clearInterval(alarmInterval);
-        alarmInterval = null;
-      }
+      if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
     }
 
     async function fetchPin(pin) {
@@ -517,41 +417,36 @@
       }
     }
 
-    async function fetchIP() {
+    async function fetchStringPin(pin) {
       try {
-        const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&v2`);
-        if (!res.ok) return "";
+        const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&${pin}`);
+        if (!res.ok) return "Normal";
         const text = await res.text();
-        return text.replace(/["\r\n\s]/g, '').trim();
+        return text.replace(/^"|"$/g, '').trim();
       } catch (e) {
-        return "";
+        return "Normal";
       }
     }
 
     async function pollBlynk() {
       try {
-        const [v0, v1, v2, v3, v4, v5, v6] = await Promise.all([
+        const [v0, v1, v3, v4, v5, v6, v7] = await Promise.all([
           fetchPin('v0'),
           fetchPin('v1'),
-          fetchIP(),
           fetchPin('v3'),
           fetchPin('v4'),
           fetchPin('v5'),
-          fetchPin('v6')
+          fetchPin('v6'),
+          fetchStringPin('v7')
         ]);
 
-        // Watchdog Verification: V1 counter rolls 1-999
-        if (lastHeartbeat === null) {
-          lastHeartbeat = v1;
-          staleCounter = 0;
-        } else if (v1 !== lastHeartbeat) {
+        if (lastHeartbeat === null || v1 !== lastHeartbeat) {
           lastHeartbeat = v1;
           staleCounter = 0;
         } else {
           staleCounter++;
         }
 
-        // Flag offline only after 8 consecutive identical reads (~12 seconds)
         if (staleCounter >= 8) {
           applyOfflineState();
           return;
@@ -559,16 +454,9 @@
 
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE TFS IEC";
+        document.getElementById('lastSeenText').innerText = "Telemetry Online";
+        document.getElementById('auditText').innerText = v7 || "System Normal";
 
-        const ipDisplay = (v2 && v2 !== "0.0.0.0" && v2 !== "OFFLINE")
-          ? `Unit IP: ${v2}`
-          : "Hardware Online & Telemetry Active";
-        document.getElementById('lastSeenText').innerText = ipDisplay;
-
-        // Distinct Pin Status:
-        // 1 = Active Critical Leak
-        // 3 = Predictive Risk Warning
-        // 2 = Sensor Comm Fault
         const hasPredictive = (v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3);
         const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
         const hasSensorFault = (v0 === 2) || (v6 === 2);
@@ -590,33 +478,19 @@
 
     function applyOfflineState() {
       document.getElementById('connDot').className = "dot";
-      document.getElementById('connText').innerText = "DEVICE OFFLINE";
-
+      document.getElementById('connText').innerText = "OFFLINE";
       const orb = document.getElementById('orbRing');
       const icon = document.getElementById('masterIcon');
       const title = document.getElementById('masterStatusText');
-      const lastSeen = document.getElementById('lastSeenText');
 
       orb.className = "orb-ring offline";
       icon.style.fill = "var(--offline)";
-      icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-
       title.innerHTML = "HARDWARE<br>OFFLINE";
       title.style.color = "var(--offline)";
-      lastSeen.innerText = "ESP32 Disconnected";
-
-      setZoneCard('cardInlet', 'txtInlet', -1);
-      setZoneCard('cardOutlet', 'txtOutlet', -1);
-      setZoneCard('cardUnit', 'txtUnit', -1);
-      setZoneCard('cardExt', 'txtExt', -1);
 
       document.getElementById('alertBanner').style.display = "none";
       document.getElementById('predBanner').style.display = "none";
       document.getElementById('emergencyModal').style.display = "none";
-      if (alarmInterval) {
-        clearInterval(alarmInterval);
-        alarmInterval = null;
-      }
     }
 
     function updateUI(state) {
@@ -633,7 +507,6 @@
       setZoneCard('cardUnit', 'txtUnit', state.unit_code);
       setZoneCard('cardExt', 'txtExt', state.ext_code);
 
-      // Collect lists of active vs degraded zones
       let breached = [];
       if (state.inlet_code === 1) breached.push("INLET PLUMBING");
       if (state.outlet_code === 1) breached.push("OUTLET PLUMBING");
@@ -646,11 +519,9 @@
       if (state.unit_code === 3) atRisk.push("UNIT PLUMBING");
       if (state.ext_code === 3) atRisk.push("EXTERNAL RS485");
 
-      // 1. Critical Active Leak (Emergency state)
       if (state.has_leak && breached.length > 0) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
-        icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
@@ -659,67 +530,44 @@
         alertBanner.style.display = "flex";
 
         if (!isSilenced) {
-          const modal = document.getElementById('emergencyModal');
           document.getElementById('modalZoneText').innerText = breached.join(" + ");
-          modal.style.display = "flex";
-
-          if (!alarmInterval) {
-            playSirenTone();
-            alarmInterval = setInterval(playSirenTone, 800);
-          }
+          document.getElementById('emergencyModal').style.display = "flex";
+          if (!alarmInterval) { playSirenTone(); alarmInterval = setInterval(playSirenTone, 800); }
         }
-      }
-      // 2. Predictive Maintenance Alert (High incident frequency, currently dry)
-      else if (state.has_predictive || atRisk.length > 0) {
+      } else if (state.has_predictive || atRisk.length > 0) {
         isSilenced = false;
         alertBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
-        if (alarmInterval) {
-          clearInterval(alarmInterval);
-          alarmInterval = null;
-        }
+        if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
 
         orb.className = "orb-ring warn";
         icon.style.fill = "var(--warn)";
-        icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
         title.innerText = "PREDICTIVE ALERT";
         title.style.color = "var(--warn)";
 
         const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL RS485";
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
-      }
-      // 3. Sensor Comm Fault
-      else if (state.has_error) {
+      } else if (state.has_error) {
         isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
-        if (alarmInterval) {
-          clearInterval(alarmInterval);
-          alarmInterval = null;
-        }
+        if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
 
-        orb.className = "orb-ring error";
+        orb.className = "orb-ring warn";
         icon.style.fill = "var(--warn)";
-        icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
-      }
-      // 4. Safe & Dry
-      else {
+      } else {
         isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
-        if (alarmInterval) {
-          clearInterval(alarmInterval);
-          alarmInterval = null;
-        }
+        if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
 
         orb.className = "orb-ring";
         icon.style.fill = "var(--safe)";
-        icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
         title.innerText = "SYSTEM SECURE";
         title.style.color = "var(--safe)";
       }
@@ -728,13 +576,9 @@
     function setZoneCard(cardId, txtId, code) {
       const card = document.getElementById(cardId);
       const txt = document.getElementById(txtId);
+      card.classList.remove('alarm', 'warn');
 
-      card.classList.remove('alarm', 'warn', 'offline');
-
-      if (code === -1) {
-        card.classList.add('offline');
-        txt.innerText = "OFFLINE";
-      } else if (code === 1) {
+      if (code === 1) {
         card.classList.add('alarm');
         txt.innerText = "⚠️ LEAK DETECTED";
       } else if (code === 3) {
