@@ -87,7 +87,7 @@
       box-shadow: 0 0 10px var(--safe);
     }
 
-    /* Active Breached Zones Banner */
+    /* Critical Active Leak Banner */
     .alert-banner {
       width: 100%;
       max-width: 440px;
@@ -107,7 +107,7 @@
       to { transform: scale(1.01); opacity: 1; }
     }
 
-    /* Predictive Alert Banner */
+    /* Predictive Maintenance Warning Banner */
     .pred-banner {
       width: 100%;
       max-width: 440px;
@@ -400,7 +400,7 @@
     </div>
   </div>
 
-  <!-- Real-Time Alarm Banner -->
+  <!-- Real-Time Critical Alarm Banner -->
   <div class="alert-banner" id="alertBanner">
     <div style="font-size: 1.5rem;">🚨</div>
     <div class="banner-text">
@@ -409,12 +409,12 @@
     </div>
   </div>
 
-  <!-- Predictive Warning Banner -->
+  <!-- Predictive Maintenance Warning Banner -->
   <div class="pred-banner" id="predBanner">
     <div style="font-size: 1.5rem;">⚠️</div>
     <div class="banner-text">
-      <div class="banner-title" style="color: var(--warn);">Predictive Maintenance Alert</div>
-      <div class="banner-sub" id="predZoneText">Repeated micro-leaks logged. Schedule inspection!</div>
+      <div class="banner-title" style="color: var(--warn);">Predictive Leak Warning</div>
+      <div class="banner-sub" id="predZoneText">High micro-leak frequency logged. Service inspection recommended!</div>
     </div>
   </div>
 
@@ -551,7 +551,7 @@
           staleCounter++;
         }
 
-        // Flag offline only after 8 consecutive identical reads (~12s)
+        // Flag offline only after 8 consecutive identical reads (~12 seconds)
         if (staleCounter >= 8) {
           applyOfflineState();
           return;
@@ -565,7 +565,10 @@
           : "Hardware Online & Telemetry Active";
         document.getElementById('lastSeenText').innerText = ipDisplay;
 
-        // Code Mapping: 1 = Active Leak, 2 = Sensor Fault, 3 = Predictive Risk, 0 = Safe
+        // Distinct Pin Status:
+        // 1 = Active Critical Leak
+        // 3 = Predictive Risk Warning
+        // 2 = Sensor Comm Fault
         const hasPredictive = (v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3);
         const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
         const hasSensorFault = (v0 === 2) || (v6 === 2);
@@ -630,6 +633,7 @@
       setZoneCard('cardUnit', 'txtUnit', state.unit_code);
       setZoneCard('cardExt', 'txtExt', state.ext_code);
 
+      // Collect lists of active vs degraded zones
       let breached = [];
       if (state.inlet_code === 1) breached.push("INLET PLUMBING");
       if (state.outlet_code === 1) breached.push("OUTLET PLUMBING");
@@ -642,7 +646,7 @@
       if (state.unit_code === 3) atRisk.push("UNIT PLUMBING");
       if (state.ext_code === 3) atRisk.push("EXTERNAL RS485");
 
-      // 1. Critical Active Leak
+      // 1. Critical Active Leak (Emergency state)
       if (state.has_leak && breached.length > 0) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
@@ -665,7 +669,7 @@
           }
         }
       }
-      // 2. Predictive Maintenance Warning (Amber)
+      // 2. Predictive Maintenance Alert (High incident frequency, currently dry)
       else if (state.has_predictive || atRisk.length > 0) {
         isSilenced = false;
         alertBanner.style.display = "none";
@@ -685,7 +689,7 @@
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
       }
-      // 3. Sensor Fault
+      // 3. Sensor Comm Fault
       else if (state.has_error) {
         isSilenced = false;
         alertBanner.style.display = "none";
@@ -702,7 +706,7 @@
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
       }
-      // 4. System Safe
+      // 4. Safe & Dry
       else {
         isSilenced = false;
         alertBanner.style.display = "none";
