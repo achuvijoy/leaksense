@@ -27,6 +27,7 @@
       --offline: #64748b;
       --text: #f1f5f9;
       --sub: #94a3b8;
+      --brand-red: #ef4444;
     }
 
     * {
@@ -48,6 +49,7 @@
       overflow-x: hidden;
     }
 
+    /* App Header with Thermo Scientific branding */
     .app-header {
       width: 100%;
       max-width: 440px;
@@ -61,13 +63,31 @@
       border-radius: 16px;
       backdrop-filter: blur(12px);
     }
+    .brand-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .thermo-logo {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--brand-red);
+      text-transform: lowercase;
+      line-height: 1.1;
+      letter-spacing: -0.2px;
+    }
+    .thermo-logo span {
+      font-weight: 300;
+      color: #ffffff;
+      margin-left: 2px;
+    }
     .brand-title {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 800;
       letter-spacing: 0.5px;
       background: linear-gradient(135deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      margin-top: 2px;
     }
     .connection-badge {
       display: flex;
@@ -284,7 +304,7 @@
       margin-bottom: 12px;
     }
 
-    /* Modal */
+    /* Modals */
     #emergencyModal, #zoneModal {
       position: fixed;
       inset: 0;
@@ -340,7 +360,10 @@
 <body>
 
   <div class="app-header">
-    <div class="brand-title">LEAKGUARD PRO</div>
+    <div class="brand-group">
+      <div class="thermo-logo">thermo<span>scientific</span></div>
+      <div class="brand-title">LEAKGUARD PRO</div>
+    </div>
     <div class="connection-badge">
       <div class="dot" id="connDot"></div>
       <span id="connText">Connecting...</span>
@@ -398,9 +421,9 @@
       <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">SYNCING</span></div>
     </div>
 
-    <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External RS485')">
+    <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External Plumbing')">
       <div class="zone-top-row">
-        <span class="zone-header">External RS485</span>
+        <span class="zone-header">External Plumbing</span>
         <span class="zone-hint">View Log ❯</span>
       </div>
       <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">SYNCING</span></div>
@@ -478,7 +501,6 @@
         const data = snapshot.val();
         parseFirebaseData(data);
       }, (error) => {
-        // Fallback to direct REST if SDK encounters permission/network block
         fetchDirectREST();
       });
     } catch(e) {
@@ -506,7 +528,6 @@
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
     }
 
-    // Refresh REST fallback every 6 seconds
     setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
@@ -601,15 +622,19 @@
         return;
       }
 
-      tbody.innerHTML = cloudEvents.map(e => `
-        <tr>
-          <td><strong>${e.zone}</strong></td>
-          <td>${e.time}</td>
-          <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
-            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️ RISK (WEAK)' : 'LEAK'}
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = cloudEvents.map(e => {
+        let zoneLabel = e.zone || "EXTERNAL";
+        if (zoneLabel.includes("EXTERNAL")) zoneLabel = "EXTERNAL PLUMBING";
+        return `
+          <tr>
+            <td><strong>${zoneLabel}</strong></td>
+            <td>${e.time}</td>
+            <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
+              ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️ RISK (WEAK)' : 'LEAK'}
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     async function fetchPin(pin) {
@@ -722,13 +747,13 @@
       if (state.inlet_code === 1) breached.push("INLET PLUMBING");
       if (state.outlet_code === 1) breached.push("OUTLET PLUMBING");
       if (state.unit_code === 1) breached.push("UNIT PLUMBING");
-      if (state.ext_code === 1) breached.push("EXTERNAL RS485");
+      if (state.ext_code === 1) breached.push("EXTERNAL PLUMBING");
 
       let atRisk = [];
       if (state.inlet_code === 3) atRisk.push("INLET PLUMBING");
       if (state.outlet_code === 3) atRisk.push("OUTLET PLUMBING");
       if (state.unit_code === 3) atRisk.push("UNIT PLUMBING");
-      if (state.ext_code === 3) atRisk.push("EXTERNAL RS485");
+      if (state.ext_code === 3) atRisk.push("EXTERNAL PLUMBING");
 
       if (state.has_leak && breached.length > 0) {
         orb.className = "orb-ring alarm";
@@ -758,7 +783,7 @@
         title.innerText = "PREDICTIVE ALERT";
         title.style.color = "var(--warn)";
 
-        const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL RS485";
+        const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL PLUMBING";
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
       } else if (state.has_error) {
