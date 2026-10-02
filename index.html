@@ -119,42 +119,14 @@
       gap: 12px;
       box-shadow: 0 0 20px var(--warn-glow);
     }
-
-    /* Real-Time Incident Audit Banner */
-    .audit-banner {
-      width: 100%;
-      max-width: 440px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-      text-align: left;
-      font-size: 0.75rem;
-    }
-    .audit-title {
-      font-size: 0.68rem;
-      color: var(--sub);
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-bottom: 3px;
-    }
-    .audit-desc {
-      color: #38bdf8;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
     .banner-text { display: flex; flex-direction: column; }
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Master Orb Ring */
+    /* Center Visual Ring */
     .status-orb-container {
-      width: 210px;
-      height: 210px;
+      width: 200px;
+      height: 200px;
       margin: 8px auto 18px auto;
       position: relative;
       display: flex;
@@ -199,7 +171,7 @@
       100% { transform: scale(0.92); opacity: 0.6; }
     }
 
-    .master-icon { width: 46px; height: 46px; margin-bottom: 6px; }
+    .master-icon { width: 44px; height: 44px; margin-bottom: 6px; }
     .master-status-text {
       font-size: 1.05rem;
       font-weight: 800;
@@ -217,7 +189,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .zone-card {
       background: var(--card-bg);
@@ -257,6 +229,45 @@
     .zone-card.alarm .zone-status-badge { background: var(--alarm); color: #ffffff; border-color: var(--alarm); }
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+
+    /* Audit Log Table */
+    .audit-box {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      text-align: left;
+    }
+    .audit-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .audit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.72rem;
+    }
+    .audit-table th {
+      color: var(--sub);
+      padding: 4px 6px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .audit-table td {
+      padding: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+    .tag-warn { color: var(--warn); font-weight: 700; }
+    .tag-leak { color: var(--alarm); font-weight: 700; }
 
     .audio-btn {
       width: 100%;
@@ -309,6 +320,7 @@
     </div>
   </div>
 
+  <!-- Real-Time Alarm Banner -->
   <div class="alert-banner" id="alertBanner">
     <div style="font-size: 1.5rem;">🚨</div>
     <div class="banner-text">
@@ -317,18 +329,13 @@
     </div>
   </div>
 
+  <!-- Predictive Warning Banner -->
   <div class="pred-banner" id="predBanner">
     <div style="font-size: 1.5rem;">⚠️</div>
     <div class="banner-text">
       <div class="banner-title" style="color: var(--warn);">Predictive Leak Warning</div>
       <div class="banner-sub" id="predZoneText">Repeated micro-leaks logged. Schedule inspection!</div>
     </div>
-  </div>
-
-  <!-- Real-Time Event Audit Banner -->
-  <div class="audit-banner">
-    <div class="audit-title">Latest Recorded Incident (IST)</div>
-    <div class="audit-desc" id="auditText">System Normal & Synchronized</div>
   </div>
 
   <div class="status-orb-container">
@@ -359,6 +366,26 @@
     </div>
   </div>
 
+  <!-- Audit Log Table Matching Local UI -->
+  <div class="audit-box">
+    <div class="audit-header">
+      <span>Recent Incident Audit Log</span>
+      <span id="auditCount">0 Events</span>
+    </div>
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Timestamp (IST)</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody id="auditTableBody">
+        <tr><td colspan="3" style="text-align:center; color:#64748b;">Awaiting incident log...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Enable High-Decibel Siren</button>
 
   <div id="emergencyModal">
@@ -376,6 +403,9 @@
     let isSilenced = false;
     let lastHeartbeat = null;
     let staleCounter = 0;
+
+    // Local incident audit list preserved across cloud polls
+    let incidentList = JSON.parse(localStorage.getItem('leak_cloud_history') || '[]');
 
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -420,12 +450,52 @@
     async function fetchStringPin(pin) {
       try {
         const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&${pin}`);
-        if (!res.ok) return "Normal";
+        if (!res.ok) return "";
         const text = await res.text();
         return text.replace(/^"|"$/g, '').trim();
       } catch (e) {
-        return "Normal";
+        return "";
       }
+    }
+
+    function addIncidentToTable(logStr) {
+      if (!logStr || logStr === "System Normal" || logStr === "History Reset" || logStr === "Normal") return;
+      
+      // Prevent duplicates
+      if (incidentList.length > 0 && incidentList[0].raw === logStr) return;
+
+      const parts = logStr.split('|').map(s => s.trim());
+      const zone = parts[0] || "EXTERNAL";
+      const time = parts[1] || new Date().toLocaleString();
+      const isRisk = logStr.includes("Evt") && (parseInt(logStr.split("Evt")[1]) >= 3);
+
+      incidentList.unshift({
+        raw: logStr,
+        zone: zone,
+        time: time,
+        type: isRisk ? 'RISK (WEAK)' : 'LEAK'
+      });
+
+      if (incidentList.length > 10) incidentList = incidentList.slice(0, 10);
+      localStorage.setItem('leak_cloud_history', JSON.stringify(incidentList));
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('auditTableBody');
+      document.getElementById('auditCount').innerText = `${incidentList.length} Events`;
+      if (incidentList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#64748b;">No recent events</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = incidentList.map(e => `
+        <tr>
+          <td><strong>${e.zone}</strong></td>
+          <td>${e.time}</td>
+          <td class="${e.type.includes('RISK') ? 'tag-warn' : 'tag-leak'}">${e.type}</td>
+        </tr>
+      `).join('');
     }
 
     async function pollBlynk() {
@@ -455,8 +525,10 @@
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE TFS IEC";
         document.getElementById('lastSeenText').innerText = "Telemetry Online";
-        document.getElementById('auditText').innerText = v7 || "System Normal";
 
+        if (v7) addIncidentToTable(v7);
+
+        // State Mapping (1=Critical Leak, 2=Fault, 3=Predictive Risk, 0=Safe)
         const hasPredictive = (v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3);
         const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
         const hasSensorFault = (v0 === 2) || (v6 === 2);
@@ -519,9 +591,11 @@
       if (state.unit_code === 3) atRisk.push("UNIT PLUMBING");
       if (state.ext_code === 3) atRisk.push("EXTERNAL RS485");
 
+      // 1. Critical Active Leak
       if (state.has_leak && breached.length > 0) {
         orb.className = "orb-ring alarm";
         icon.style.fill = "var(--alarm)";
+        icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
         title.innerText = "CRITICAL LEAK";
         title.style.color = "var(--alarm)";
 
@@ -534,7 +608,9 @@
           document.getElementById('emergencyModal').style.display = "flex";
           if (!alarmInterval) { playSirenTone(); alarmInterval = setInterval(playSirenTone, 800); }
         }
-      } else if (state.has_predictive || atRisk.length > 0) {
+      }
+      // 2. Predictive Maintenance Alert
+      else if (state.has_predictive || atRisk.length > 0) {
         isSilenced = false;
         alertBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
@@ -542,13 +618,16 @@
 
         orb.className = "orb-ring warn";
         icon.style.fill = "var(--warn)";
+        icon.innerHTML = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
         title.innerText = "PREDICTIVE ALERT";
         title.style.color = "var(--warn)";
 
         const zoneStr = atRisk.length ? atRisk.join(", ") : "EXTERNAL RS485";
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
-      } else if (state.has_error) {
+      }
+      // 3. Sensor Comm Fault
+      else if (state.has_error) {
         isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
@@ -557,9 +636,12 @@
 
         orb.className = "orb-ring warn";
         icon.style.fill = "var(--warn)";
+        icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
-      } else {
+      }
+      // 4. Safe System
+      else {
         isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
@@ -568,6 +650,7 @@
 
         orb.className = "orb-ring";
         icon.style.fill = "var(--safe)";
+        icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
         title.innerText = "SYSTEM SECURE";
         title.style.color = "var(--safe)";
       }
@@ -576,9 +659,12 @@
     function setZoneCard(cardId, txtId, code) {
       const card = document.getElementById(cardId);
       const txt = document.getElementById(txtId);
-      card.classList.remove('alarm', 'warn');
+      card.classList.remove('alarm', 'warn', 'offline');
 
-      if (code === 1) {
+      if (code === -1) {
+        card.classList.add('offline');
+        txt.innerText = "OFFLINE";
+      } else if (code === 1) {
         card.classList.add('alarm');
         txt.innerText = "⚠️ LEAK DETECTED";
       } else if (code === 3) {
@@ -592,6 +678,7 @@
       }
     }
 
+    renderTable();
     setInterval(pollBlynk, 1500);
     pollBlynk();
   </script>
