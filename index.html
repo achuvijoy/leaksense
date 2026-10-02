@@ -214,6 +214,7 @@
     .zone-card.warn {
       border-color: var(--warn);
       background: var(--warn-bg);
+      box-shadow: 0 0 20px rgba(255, 184, 0, 0.2);
     }
     .zone-card.offline { opacity: 0.6; }
 
@@ -520,7 +521,7 @@
           staleCounter++;
         }
 
-        // Only switch offline after 10 consecutive stalled cycles (~20 seconds)
+        // Allow 10 cycles (~20s) before flagging offline
         if (staleCounter >= 10) {
           applyOfflineState();
           return;
@@ -532,7 +533,8 @@
 
         if (v7) addIncidentToTable(v7);
 
-        // Code Definitions: 1=Leak, 3=Predictive, 2=Error, 0=Safe
+        // Explicit Code Priority:
+        // 1 = Active Leak, 3 = Predictive Risk, 2 = Sensor Comm Fault
         const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
         const hasPredictive = (v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3);
         const hasSensorFault = (v0 === 2) || (v6 === 2);
