@@ -159,6 +159,11 @@
       box-shadow: 0 0 45px var(--warn-glow);
       animation: breathe 2s infinite alternate ease-in-out;
     }
+    .orb-ring.error {
+      border-color: var(--warn);
+      box-shadow: 0 0 35px rgba(255, 184, 0, 0.3);
+      animation: none;
+    }
     .orb-ring.offline {
       border-color: var(--offline);
       box-shadow: 0 0 20px rgba(100, 116, 139, 0.2);
@@ -458,22 +463,39 @@
 
   <script>
     // ----------------------------------------------------
-    // FIREBASE REALTIME DATABASE CONFIGURATION
+    // FIREBASE REALTIME DATABASE SYNC (DUAL-MODE)
     // ----------------------------------------------------
-    const firebaseConfig = {
-      // Replace with your Firebase database URL from Step 1
-      databaseURL: "https://leaksense-default-rtdb.firebaseio.com/"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const dbRef = firebase.database().ref("events");
-
-    // Live array of events synchronized across all clients
+    const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
     let activeZoneKey = null;
 
-    // Listen to Firebase Realtime Database updates
-    dbRef.limitToLast(25).on("value", (snapshot) => {
-      const data = snapshot.val();
+    try {
+      const firebaseConfig = { databaseURL: DB_URL };
+      firebase.initializeApp(firebaseConfig);
+      const dbRef = firebase.database().ref("events");
+
+      dbRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        parseFirebaseData(data);
+      }, (error) => {
+        // Fallback to direct REST if SDK encounters permission/network block
+        fetchDirectREST();
+      });
+    } catch(e) {
+      fetchDirectREST();
+    }
+
+    async function fetchDirectREST() {
+      try {
+        const res = await fetch(`${DB_URL}/events.json`);
+        if (res.ok) {
+          const data = await res.json();
+          parseFirebaseData(data);
+        }
+      } catch (err) {}
+    }
+
+    function parseFirebaseData(data) {
       cloudEvents = [];
       if (data) {
         Object.keys(data).forEach((key) => {
@@ -482,7 +504,10 @@
       }
       renderMasterTable();
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
-    });
+    }
+
+    // Refresh REST fallback every 6 seconds
+    setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
     // BLYNK LIVE TELEMETRY SETUP
@@ -533,7 +558,7 @@
 
       const badge = document.getElementById('zoneModalStatus');
       if (zoneEvents.length >= 3) {
-        badge.innerText = "⚠️️ RISK (WEAK)";
+        badge.innerText = "⚠️ RISK (WEAK)";
         badge.style.color = "var(--warn)";
       } else {
         badge.innerText = "✓ DRY / SAFE";
