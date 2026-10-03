@@ -152,7 +152,7 @@
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Dashboard Content */
+    /* Dashboard Layout */
     .dashboard-content {
       width: 100%;
       display: flex;
@@ -328,7 +328,7 @@
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 
-    /* Cloud Audit Table */
+    /* Audit Log Table */
     .audit-box {
       width: 100%;
       background: var(--card-bg);
@@ -411,7 +411,7 @@
       transform: scale(0.97);
     }
 
-    /* Per-Zone History Modal */
+    /* Zone Modal */
     #zoneModal {
       position: fixed;
       inset: 0;
@@ -451,7 +451,6 @@
       cursor: pointer;
     }
 
-    /* Responsive */
     @media (min-width: 820px) {
       body { padding: 26px 20px; }
       .app-wrapper { max-width: 1060px; }
@@ -473,7 +472,6 @@
 <body>
 
   <div class="app-wrapper">
-    <!-- Header -->
     <div class="app-header">
       <div class="brand-group">
         <div class="thermo-logo">thermo<span>scientific</span></div>
@@ -485,7 +483,7 @@
       </div>
     </div>
 
-    <!-- Alarm Banner -->
+    <!-- Alert Banner -->
     <div class="alert-banner" id="alertBanner">
       <div style="font-size: 1.5rem;">🚨</div>
       <div class="banner-text">
@@ -503,9 +501,7 @@
       </div>
     </div>
 
-    <!-- Dashboard Content -->
     <div class="dashboard-content">
-      
       <!-- Left Panel -->
       <div class="left-panel">
         <div class="status-orb-card">
@@ -581,7 +577,6 @@
           </table>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -595,7 +590,7 @@
     <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
   </div>
 
-  <!-- Per-Zone History Modal -->
+  <!-- Zone Modal -->
   <div id="zoneModal">
     <div class="modal-content">
       <div class="modal-title">
@@ -623,7 +618,7 @@
 
   <script>
     // ----------------------------------------------------
-    // FAST FIREBASE TRIGGER + BLYNK VERIFICATION PIPELINE
+    // FIREBASE REALTIME LISTENER + FAST ALARM TRIGGER
     // ----------------------------------------------------
     const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
@@ -632,10 +627,11 @@
     let knownEventKeys = new Set();
     let isInitialFirebaseLoad = true;
 
-    // Single Incident Session Tracking
-    let activeAlarmSession = false;
-    let latchedBreachedZone = "";
-    let isSilenced = false;
+    // Decoupled Fast Handshake Tracking
+    let fastAlarmActive = false;
+    let fastAlarmTime = 0;
+    let fastAlarmZone = "";
+    let blynkConfirmedLeak = false;
 
     try {
       const firebaseConfig = { databaseURL: DB_URL };
@@ -679,16 +675,15 @@
       if (isInitialFirebaseLoad) {
         isInitialFirebaseLoad = false;
       } else if (newEvents.length > 0) {
-        // Fast Alarm: First responder (<150ms)
         const newest = newEvents[newEvents.length - 1];
-        startFirebaseAlarmSession(newest);
+        startFirebaseFastAlarm(newest);
       }
 
       renderMasterTable();
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
     }
 
-    function startFirebaseAlarmSession(event) {
+    function startFirebaseFastAlarm(event) {
       let rawZone = (event.zone || "LEAK").toUpperCase();
       let label = rawZone;
       if (label.includes("INLET")) label = "INLET PLUMBING";
@@ -696,8 +691,10 @@
       else if (label.includes("UNIT")) label = "UNIT PLUMBING";
       else if (label.includes("EXT")) label = "EXTERNAL PLUMBING";
 
-      latchedBreachedZone = label;
-      activeAlarmSession = true;
+      fastAlarmZone = label;
+      fastAlarmActive = true;
+      fastAlarmTime = Date.now();
+      blynkConfirmedLeak = false;
 
       let inCode = label.includes("INLET") ? 1 : 0;
       let outCode = label.includes("OUTLET") ? 1 : 0;
@@ -718,13 +715,14 @@
     setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
-    // BLYNK VERIFICATION & TELEMETRY
+    // BLYNK VERIFICATION & REAL-TIME HARDWARE RECOVERY
     // ----------------------------------------------------
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
     const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
 
     let audioCtx = null;
     let alarmInterval = null;
+    let isSilenced = false;
     let lastHeartbeat = null;
     let staleCounter = 0;
 
@@ -876,39 +874,43 @@
         document.getElementById('lastSeenText').innerText = (v2 && v2 !== "0.0.0.0") ? `Unit IP: ${v2}` : "Telemetry Online";
 
         const blynkLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
-        
+
+        // 1. Handover: If Blynk confirms the leak, handover complete
+        if (blynkLeak) {
+          blynkConfirmedLeak = true;
+          fastAlarmActive = false;
+        }
+
+        // 2. Timeout: If fast alarm fired but Blynk hasn't responded within 6 seconds, expire it
+        if (fastAlarmActive && (Date.now() - fastAlarmTime > 6000)) {
+          fastAlarmActive = false;
+        }
+
+        // 3. Auto-Clear: If Blynk previously confirmed the leak but is now reporting dry, clear immediately
+        if (blynkConfirmedLeak && !blynkLeak) {
+          blynkConfirmedLeak = false;
+          fastAlarmActive = false;
+          fastAlarmZone = "";
+        }
+
+        // Critical status is TRUE only if Blynk confirms it or fast alarm window is active
+        const hasCriticalLeak = blynkLeak || fastAlarmActive;
+
         let inCode = v3;
         let outCode = v4;
         let unCode = v5;
         let exCode = v6;
 
-        // Check if an alarm condition is active from either source
-        const hasCriticalLeak = blynkLeak || activeAlarmSession;
-
+        // If fast alarm is active during the 2-second handover gap, map the zone
         if (hasCriticalLeak) {
-          activeAlarmSession = true;
-
-          // Seamless Handshake: If Blynk is still uploading individual zone pins (v3-v6 are 0)
-          // but v0=1 or Firebase started the session, retain the latched zone so the UI doesn't drop.
-          if (inCode !== 1 && outCode !== 1 && unCode !== 1 && exCode !== 1 && latchedBreachedZone) {
-            if (latchedBreachedZone.includes("INLET")) inCode = 1;
-            if (latchedBreachedZone.includes("OUTLET")) outCode = 1;
-            if (latchedBreachedZone.includes("UNIT")) unCode = 1;
-            if (latchedBreachedZone.includes("EXT")) exCode = 1;
-          } else if (inCode === 1 || outCode === 1 || unCode === 1 || exCode === 1) {
-            // Blynk has confirmed specific zones
-            let confirmed = [];
-            if (inCode === 1) confirmed.push("INLET PLUMBING");
-            if (outCode === 1) confirmed.push("OUTLET PLUMBING");
-            if (unCode === 1) confirmed.push("UNIT PLUMBING");
-            if (exCode === 1) confirmed.push("EXTERNAL PLUMBING");
-            latchedBreachedZone = confirmed.join(" + ");
+          if (inCode !== 1 && outCode !== 1 && unCode !== 1 && exCode !== 1 && fastAlarmZone) {
+            if (fastAlarmZone.includes("INLET")) inCode = 1;
+            if (fastAlarmZone.includes("OUTLET")) outCode = 1;
+            if (fastAlarmZone.includes("UNIT")) unCode = 1;
+            if (fastAlarmZone.includes("EXT")) exCode = 1;
           }
         } else {
-          // Both Blynk and hardware confirm all zones are dry
-          activeAlarmSession = false;
-          latchedBreachedZone = "";
-          isSilenced = false; // Reset acknowledgment only after the leak clears
+          fastAlarmZone = "";
         }
 
         const hasPredictive = !hasCriticalLeak && ((v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3));
@@ -969,8 +971,8 @@
       if (state.unit_code === 1) breached.push("UNIT PLUMBING");
       if (state.ext_code === 1) breached.push("EXTERNAL PLUMBING");
 
-      if (state.has_leak && breached.length === 0 && latchedBreachedZone) {
-        breached.push(latchedBreachedZone);
+      if (state.has_leak && breached.length === 0 && fastAlarmZone) {
+        breached.push(fastAlarmZone);
       }
 
       let atRisk = [];
@@ -990,13 +992,13 @@
         bannerZoneText.innerText = breached.join(" + ");
         alertBanner.style.display = "flex";
 
-        // Opens modal & starts siren only once per session; respects acknowledgment
         if (!isSilenced) {
           document.getElementById('modalZoneText').innerText = breached.join(" + ");
           document.getElementById('emergencyModal').style.display = "flex";
           if (!alarmInterval) { playSirenTone(); alarmInterval = setInterval(playSirenTone, 800); }
         }
       } else if (state.has_predictive || atRisk.length > 0) {
+        isSilenced = false;
         alertBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
         if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
@@ -1011,6 +1013,7 @@
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
       } else if (state.has_error) {
+        isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
@@ -1022,6 +1025,8 @@
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
       } else {
+        // Normal Secure: Cleans up everything automatically
+        isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
