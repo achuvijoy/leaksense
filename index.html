@@ -49,7 +49,7 @@
       overflow-x: hidden;
     }
 
-    /* Outer Wrapper: Expands up to 1060px on PC while remaining 440px on mobile */
+    /* Outer Wrapper: Fits mobile comfortably and expands up to 1060px on PC */
     .app-wrapper {
       width: 100%;
       max-width: 440px;
@@ -154,7 +154,7 @@
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Main Dashboard Layout */
+    /* Dashboard Layout */
     .dashboard-content {
       width: 100%;
       display: flex;
@@ -174,7 +174,7 @@
       flex-direction: column;
     }
 
-    /* Left Card: Houses Status Ring + Unified Siren Action */
+    /* Left Status Card (Visual Ring + Action) */
     .status-orb-card {
       width: 100%;
       display: flex;
@@ -262,7 +262,7 @@
     }
     .last-seen-text { font-size: 0.72rem; color: var(--sub); margin-top: 5px; }
 
-    /* Docked Siren Toggle inside Left Card */
+    /* Siren Button docked in Left Card */
     .card-footer-action {
       width: 100%;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -367,8 +367,8 @@
     .tag-warn { color: var(--warn); font-weight: 700; }
     .tag-leak { color: var(--alarm); font-weight: 700; }
 
-    /* Modals */
-    #emergencyModal, #zoneModal {
+    /* Full-Screen Emergency Modal with Pulsing Red Triangle */
+    #emergencyModal {
       position: fixed;
       inset: 0;
       background: rgba(10, 0, 4, 0.94);
@@ -380,8 +380,64 @@
       align-items: center;
       padding: 24px;
       text-align: center;
+      animation: modalFadeIn 0.3s ease-out;
     }
-    #zoneModal { background: rgba(7, 11, 20, 0.96); }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-alarm-icon {
+      width: 80px;
+      height: 80px;
+      fill: var(--alarm);
+      filter: drop-shadow(0 0 25px var(--alarm));
+      animation: pulse-rapid 0.6s infinite ease-in-out;
+      margin-bottom: 16px;
+    }
+    .emergency-title {
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 6px;
+      letter-spacing: 0.8px;
+    }
+    .emergency-zones {
+      font-size: 1.15rem;
+      color: #ff99aa;
+      font-weight: 800;
+      margin-bottom: 22px;
+      text-transform: uppercase;
+    }
+    .dismiss-btn {
+      background: var(--alarm);
+      color: #ffffff;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px 34px;
+      border-radius: 30px;
+      box-shadow: 0 0 30px var(--alarm-glow);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .dismiss-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Per-Zone History Modal */
+    #zoneModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 11, 20, 0.96);
+      backdrop-filter: blur(20px);
+      z-index: 999;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+    }
     .modal-content {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -407,21 +463,8 @@
       font-weight: 700;
       cursor: pointer;
     }
-    .dismiss-btn {
-      background: var(--alarm);
-      color: #ffffff;
-      border: none;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 14px 34px;
-      border-radius: 30px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
 
-    /* ----------------------------------------------------
-       DESKTOP RESPONSIVE ALIGNMENTS (≥ 820px)
-       ---------------------------------------------------- */
+    /* Desktop Responsive Layout (≥ 820px) */
     @media (min-width: 820px) {
       body {
         padding: 26px 20px;
@@ -437,7 +480,7 @@
         display: grid;
         grid-template-columns: 360px 1fr;
         gap: 18px;
-        align-items: stretch; /* Aligns left & right column baselines */
+        align-items: stretch;
       }
       .left-panel {
         height: 100%;
@@ -499,7 +542,7 @@
     <!-- Main Dashboard Responsive Layout -->
     <div class="dashboard-content">
       
-      <!-- Left Panel: Cohesive Master Card (Orb + Internal Siren Toggle) -->
+      <!-- Left Panel: Center Orb + Siren Toggle -->
       <div class="left-panel">
         <div class="status-orb-card">
           <div class="orb-inner-wrapper">
@@ -579,9 +622,13 @@
     </div>
   </div>
 
+  <!-- Emergency Modal with Warning Icon Restored -->
   <div id="emergencyModal">
-    <div style="font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-bottom: 8px;">CRITICAL LEAK DETECTED</div>
-    <div style="font-size: 1.1rem; color: #ff99aa; font-weight: 800;" id="modalZoneText">INLET PLUMBING</div>
+    <svg class="modal-alarm-icon" viewBox="0 0 24 24">
+      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+    </svg>
+    <div class="emergency-title">CRITICAL LEAK DETECTED</div>
+    <div class="emergency-zones" id="modalZoneText">INLET PLUMBING</div>
     <button class="dismiss-btn" onclick="dismissModal()">ACKNOWLEDGE & SILENCE</button>
   </div>
 
@@ -613,7 +660,7 @@
 
   <script>
     // ----------------------------------------------------
-    // FIREBASE REALTIME DATABASE SYNC (DUAL-MODE)
+    // FIREBASE REALTIME DATABASE SYNC
     // ----------------------------------------------------
     const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
@@ -673,7 +720,8 @@
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       document.getElementById('soundBtn').style.display = 'none';
-      document.querySelector('.card-footer-action').style.display = 'none';
+      const footer = document.querySelector('.card-footer-action');
+      if (footer) footer.style.display = 'none';
     }
 
     function playSirenTone() {
@@ -736,7 +784,7 @@
         <tr>
           <td>${e.time}</td>
           <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
-            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️ RISK (WEAK)' : 'LEAK'}
+            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️️ RISK (WEAK)' : 'LEAK'}
           </td>
         </tr>
       `).join('');
