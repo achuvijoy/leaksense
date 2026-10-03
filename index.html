@@ -391,12 +391,12 @@
       to { opacity: 1; transform: scale(1); }
     }
     .modal-alarm-icon {
-      width: 80px;
-      height: 80px;
+      width: 76px;
+      height: 76px;
       fill: var(--alarm);
       filter: drop-shadow(0 0 25px var(--alarm));
-      animation: pulse-rapid 0.6s infinite ease-in-out;
-      margin-bottom: 16px;
+      animation: pulse-rapid 0.7s infinite ease-in-out;
+      margin-bottom: 14px;
     }
     .emergency-title {
       font-size: 1.85rem;
@@ -754,9 +754,11 @@
     let audioCtx = null;
     let alarmInterval = null;
     let isSilenced = false;
+
     let lastHeartbeat = null;
     let staleCounter = 0;
-    let hasReceivedLiveHeartbeat = false;
+    let consecutiveNetworkErrors = 0;
+    let isDeviceConfirmedOnline = false;
 
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -858,11 +860,12 @@
     async function fetchPin(pin) {
       try {
         const res = await fetch(`${BLYNK_HOST}/get?token=${BLYNK_AUTH}&${pin}`);
-        if (!res.ok) return 0;
+        if (!res.ok) return null;
         const text = await res.text();
-        return Number(text.replace(/["\r\n\s]/g, '')) || 0;
+        const cleaned = text.replace(/["\r\n\s]/g, '');
+        return cleaned === "" ? 0 : Number(cleaned);
       } catch (e) {
-        return 0;
+        return null;
       }
     }
 
@@ -889,28 +892,37 @@
           fetchPin('v6')
         ]);
 
-        // Heartbeat Watchdog Verification
+        // If core telemetry endpoints completely dropped, tally a network error
+        if (v0 === null || v1 === null) {
+          consecutiveNetworkErrors++;
+          if (consecutiveNetworkErrors >= 6) {
+            applyOfflineState();
+          }
+          return;
+        }
+
+        consecutiveNetworkErrors = 0;
+
+        // Heartbeat Watchdog Progression Evaluation
         if (lastHeartbeat === null) {
           lastHeartbeat = v1;
           staleCounter = 0;
-          // While we wait for the first counter increment, maintain connecting state
-          return;
-        } else if (v1 !== lastHeartbeat && v1 > 0) {
+          isDeviceConfirmedOnline = (v1 > 0);
+        } else if (v1 !== lastHeartbeat) {
           lastHeartbeat = v1;
           staleCounter = 0;
-          hasReceivedLiveHeartbeat = true;
+          isDeviceConfirmedOnline = true;
         } else {
           staleCounter++;
         }
 
-        // If stale for 4s on initial boot (never advanced) or 5s during run: Hardware is OFF
-        const timeoutLimit = hasReceivedLiveHeartbeat ? 5 : 4;
-        if (staleCounter >= timeoutLimit) {
+        // Allow up to 12s of static heartbeat before triggering offline
+        if (staleCounter >= 12 || (!isDeviceConfirmedOnline && staleCounter >= 6)) {
           applyOfflineState();
           return;
         }
 
-        // Active Live Connection Established
+        // Active State Rendered
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE IEC-DEV-01";
         document.getElementById('lastSeenText').innerText = (v2 && v2 !== "0.0.0.0") ? `Unit IP: ${v2}` : "Telemetry Online";
@@ -964,11 +976,15 @@
         });
 
       } catch (err) {
-        applyOfflineState();
+        consecutiveNetworkErrors++;
+        if (consecutiveNetworkErrors >= 6) {
+          applyOfflineState();
+        }
       }
     }
 
     function applyOfflineState() {
+      isDeviceConfirmedOnline = false;
       document.getElementById('connDot').className = "dot offline";
       document.getElementById('connText').innerText = "DEVICE OFFLINE";
       const orb = document.getElementById('orbRing');
@@ -983,7 +999,6 @@
       title.style.color = "var(--offline)";
       lastSeen.innerText = "ESP32 Disconnected";
 
-      // Explicitly mark all zones as OFFLINE
       setZoneCard('cardInlet', 'txtInlet', -1);
       setZoneCard('cardOutlet', 'txtOutlet', -1);
       setZoneCard('cardUnit', 'txtUnit', -1);
