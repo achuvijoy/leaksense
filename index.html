@@ -49,7 +49,7 @@
       overflow-x: hidden;
     }
 
-    /* Outer Wrapper: Fits mobile comfortably and expands up to 1100px on PC */
+    /* Outer Wrapper: Expands up to 1060px on PC while remaining 440px on mobile */
     .app-wrapper {
       width: 100%;
       max-width: 440px;
@@ -154,7 +154,7 @@
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Dashboard Layout: Single column on phone, 2-column split on PC */
+    /* Main Dashboard Layout */
     .dashboard-content {
       width: 100%;
       display: flex;
@@ -166,30 +166,43 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
 
     .right-panel {
       width: 100%;
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
 
-    /* Center Visual Ring */
+    /* Left Card: Houses Status Ring + Unified Siren Action */
     .status-orb-card {
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      margin-bottom: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 22px 18px 18px 18px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .orb-inner-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px 0;
     }
 
     .status-orb-container {
       width: 210px;
       height: 210px;
-      margin: 8px auto 18px auto;
+      margin: 0 auto;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -249,13 +262,41 @@
     }
     .last-seen-text { font-size: 0.72rem; color: var(--sub); margin-top: 5px; }
 
+    /* Docked Siren Toggle inside Left Card */
+    .card-footer-action {
+      width: 100%;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 14px;
+      margin-top: 10px;
+    }
+    .audio-btn {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .audio-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
     /* Clickable 4-Zone Grid */
     .zone-container {
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .zone-card {
       background: var(--card-bg);
@@ -305,9 +346,9 @@
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      margin-bottom: 14px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
       text-align: left;
     }
     .audit-header {
@@ -321,24 +362,10 @@
       margin-bottom: 8px;
     }
     .audit-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
-    .audit-table th { color: var(--sub); padding: 4px 6px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .audit-table th { color: var(--sub); padding: 6px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
     .audit-table td { padding: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: var(--text); }
     .tag-warn { color: var(--warn); font-weight: 700; }
     .tag-leak { color: var(--alarm); font-weight: 700; }
-
-    .audio-btn {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 12px;
-      color: var(--text);
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 12px;
-    }
-    .audio-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
     /* Modals */
     #emergencyModal, #zoneModal {
@@ -393,45 +420,44 @@
     }
 
     /* ----------------------------------------------------
-       RESPONSIVE ENHANCEMENTS FOR PC / TABLET SCREENS
+       DESKTOP RESPONSIVE ALIGNMENTS (≥ 820px)
        ---------------------------------------------------- */
     @media (min-width: 820px) {
       body {
-        padding: 24px 20px;
+        padding: 26px 20px;
       }
       .app-wrapper {
         max-width: 1060px;
       }
       .app-header {
-        padding: 18px 24px;
+        padding: 16px 22px;
         margin-bottom: 16px;
       }
       .dashboard-content {
         display: grid;
         grid-template-columns: 360px 1fr;
-        gap: 20px;
-        align-items: start;
-      }
-      .status-orb-card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 18px;
-        padding: 26px 16px 20px 16px;
+        gap: 18px;
+        align-items: stretch; /* Aligns left & right column baselines */
       }
       .left-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
+        height: 100%;
+      }
+      .status-orb-card {
+        height: 100%;
+        margin-bottom: 0;
+        padding: 24px 20px 20px 20px;
       }
       .right-panel {
         display: flex;
         flex-direction: column;
         gap: 14px;
+        height: 100%;
       }
       .zone-container {
         margin-bottom: 0;
       }
       .audit-box {
+        flex: 1;
         margin-bottom: 0;
       }
     }
@@ -473,20 +499,24 @@
     <!-- Main Dashboard Responsive Layout -->
     <div class="dashboard-content">
       
-      <!-- Left Panel: Center Visual Ring & Audio Toggle -->
+      <!-- Left Panel: Cohesive Master Card (Orb + Internal Siren Toggle) -->
       <div class="left-panel">
         <div class="status-orb-card">
-          <div class="status-orb-container">
-            <div class="orb-ring" id="orbRing"></div>
-            <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
-            <div class="last-seen-text" id="lastSeenText">Syncing Telemetry...</div>
+          <div class="orb-inner-wrapper">
+            <div class="status-orb-container">
+              <div class="orb-ring" id="orbRing"></div>
+              <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
+              <div class="last-seen-text" id="lastSeenText">Syncing Telemetry...</div>
+            </div>
+          </div>
+          
+          <div class="card-footer-action">
+            <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Enable High-Decibel Siren</button>
           </div>
         </div>
-
-        <button class="audio-btn" id="soundBtn" onclick="enableAudioEngine()">🔔 Enable High-Decibel Siren</button>
       </div>
 
       <!-- Right Panel: Clickable 4 Zones & Firebase Cloud Audit Table -->
@@ -643,6 +673,7 @@
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       document.getElementById('soundBtn').style.display = 'none';
+      document.querySelector('.card-footer-action').style.display = 'none';
     }
 
     function playSirenTone() {
