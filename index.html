@@ -49,7 +49,6 @@
       overflow-x: hidden;
     }
 
-    /* Outer Wrapper: Fits mobile comfortably and expands up to 1060px on PC */
     .app-wrapper {
       width: 100%;
       max-width: 440px;
@@ -59,7 +58,6 @@
       transition: max-width 0.3s ease;
     }
 
-    /* App Header with Thermo Scientific branding */
     .app-header {
       width: 100%;
       display: flex;
@@ -174,7 +172,6 @@
       flex-direction: column;
     }
 
-    /* Left Status Card (Visual Ring + Action) */
     .status-orb-card {
       width: 100%;
       display: flex;
@@ -262,7 +259,6 @@
     }
     .last-seen-text { font-size: 0.72rem; color: var(--sub); margin-top: 5px; }
 
-    /* Siren Button docked in Left Card */
     .card-footer-action {
       width: 100%;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -290,7 +286,7 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* Clickable 4-Zone Grid */
+    /* 4-Zone Grid */
     .zone-container {
       width: 100%;
       display: grid;
@@ -341,7 +337,7 @@
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 
-    /* Real-Time Cloud Audit Log Table */
+    /* Cloud Audit Table */
     .audit-box {
       width: 100%;
       background: var(--card-bg);
@@ -367,7 +363,7 @@
     .tag-warn { color: var(--warn); font-weight: 700; }
     .tag-leak { color: var(--alarm); font-weight: 700; }
 
-    /* Full-Screen Emergency Modal with Pulsing Red Triangle */
+    /* Emergency Modal */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -464,45 +460,22 @@
       cursor: pointer;
     }
 
-    /* Desktop Responsive Layout (≥ 820px) */
+    /* Responsive Layout */
     @media (min-width: 820px) {
-      body {
-        padding: 26px 20px;
-      }
-      .app-wrapper {
-        max-width: 1060px;
-      }
-      .app-header {
-        padding: 16px 22px;
-        margin-bottom: 16px;
-      }
+      body { padding: 26px 20px; }
+      .app-wrapper { max-width: 1060px; }
+      .app-header { padding: 16px 22px; margin-bottom: 16px; }
       .dashboard-content {
         display: grid;
         grid-template-columns: 360px 1fr;
         gap: 18px;
         align-items: stretch;
       }
-      .left-panel {
-        height: 100%;
-      }
-      .status-orb-card {
-        height: 100%;
-        margin-bottom: 0;
-        padding: 24px 20px 20px 20px;
-      }
-      .right-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        height: 100%;
-      }
-      .zone-container {
-        margin-bottom: 0;
-      }
-      .audit-box {
-        flex: 1;
-        margin-bottom: 0;
-      }
+      .left-panel { height: 100%; }
+      .status-orb-card { height: 100%; margin-bottom: 0; padding: 24px 20px 20px 20px; }
+      .right-panel { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+      .zone-container { margin-bottom: 0; }
+      .audit-box { flex: 1; margin-bottom: 0; }
     }
   </style>
 </head>
@@ -622,7 +595,7 @@
     </div>
   </div>
 
-  <!-- Emergency Modal with Warning Icon Restored -->
+  <!-- Emergency Modal -->
   <div id="emergencyModal">
     <svg class="modal-alarm-icon" viewBox="0 0 24 24">
       <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
@@ -660,11 +633,17 @@
 
   <script>
     // ----------------------------------------------------
-    // FIREBASE REALTIME DATABASE SYNC
+    // FIREBASE REALTIME DATABASE SYNC + FAST ALARM TRIGGER
     // ----------------------------------------------------
     const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
     let activeZoneKey = null;
+
+    let knownEventKeys = new Set();
+    let isInitialFirebaseLoad = true;
+    let fastAlarmActive = false;
+    let fastAlarmZone = "";
+    let fastAlarmTimer = null;
 
     try {
       const firebaseConfig = { databaseURL: DB_URL };
@@ -693,19 +672,68 @@
 
     function parseFirebaseData(data) {
       cloudEvents = [];
+      let newEvents = [];
       if (data) {
         Object.keys(data).forEach((key) => {
-          cloudEvents.unshift(data[key]);
+          const evt = data[key];
+          cloudEvents.unshift(evt);
+          if (!isInitialFirebaseLoad && !knownEventKeys.has(key)) {
+            newEvents.push(evt);
+          }
+          knownEventKeys.add(key);
         });
       }
+
+      if (isInitialFirebaseLoad) {
+        isInitialFirebaseLoad = false;
+      } else if (newEvents.length > 0) {
+        // Fast Alarm Trigger: Fires within ~150ms as soon as the event posts to Firebase
+        const newest = newEvents[newEvents.length - 1];
+        triggerFastFirebaseAlarm(newest);
+      }
+
       renderMasterTable();
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
+    }
+
+    function triggerFastFirebaseAlarm(event) {
+      let rawZone = (event.zone || "LEAK").toUpperCase();
+      let label = rawZone;
+      if (label.includes("INLET")) label = "INLET PLUMBING";
+      else if (label.includes("OUTLET")) label = "OUTLET PLUMBING";
+      else if (label.includes("UNIT")) label = "UNIT PLUMBING";
+      else if (label.includes("EXT")) label = "EXTERNAL PLUMBING";
+
+      fastAlarmZone = label;
+      fastAlarmActive = true;
+
+      if (fastAlarmTimer) clearTimeout(fastAlarmTimer);
+      // Auto-fallback timeout: after 10 seconds, yield completely to Blynk
+      fastAlarmTimer = setTimeout(() => {
+        fastAlarmActive = false;
+      }, 10000);
+
+      // Synthesize immediate UI alarm without waiting for Blynk HTTP poll
+      let inletCode = label.includes("INLET") ? 1 : 0;
+      let outletCode = label.includes("OUTLET") ? 1 : 0;
+      let unitCode = label.includes("UNIT") ? 1 : 0;
+      let extCode = label.includes("EXT") ? 1 : 0;
+
+      updateUI({
+        has_leak: true,
+        has_error: false,
+        has_predictive: false,
+        inlet_code: inletCode,
+        outlet_code: outletCode,
+        unit_code: unitCode,
+        ext_code: extCode
+      });
     }
 
     setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
-    // BLYNK LIVE TELEMETRY SETUP (BLR1 CLUSTER)
+    // BLYNK TELEMETRY SETUP (BLR1 CLUSTER CONFIRMATION)
     // ----------------------------------------------------
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
     const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
@@ -784,7 +812,7 @@
         <tr>
           <td>${e.time}</td>
           <td class="${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? 'tag-warn' : 'tag-leak'}">
-            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠️️ RISK (WEAK)' : 'LEAK'}
+            ${(e.type || '').includes('WARN') || (e.type || '').includes('RISK') ? '⚠ RISK (WEAK)' : 'LEAK'}
           </td>
         </tr>
       `).join('');
@@ -866,18 +894,39 @@
         document.getElementById('connText').innerText = "LIVE IEC-DEV-01";
         document.getElementById('lastSeenText').innerText = (v2 && v2 !== "0.0.0.0") ? `Unit IP: ${v2}` : "Telemetry Online";
 
-        const hasCriticalLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
-        const hasPredictive = (v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3);
-        const hasSensorFault = (v0 === 2) || (v6 === 2);
+        const blynkLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
+        
+        // Once Blynk confirms the leak, handover fast alarm to Blynk
+        if (blynkLeak) {
+          fastAlarmActive = false;
+          if (fastAlarmTimer) clearTimeout(fastAlarmTimer);
+        }
+
+        let inCode = v3;
+        let outCode = v4;
+        let unCode = v5;
+        let exCode = v6;
+
+        // If fast alarm is still active waiting for Blynk HTTP update, overlay zone:
+        if (fastAlarmActive) {
+          if (fastAlarmZone.includes("INLET")) inCode = 1;
+          if (fastAlarmZone.includes("OUTLET")) outCode = 1;
+          if (fastAlarmZone.includes("UNIT")) unCode = 1;
+          if (fastAlarmZone.includes("EXT")) exCode = 1;
+        }
+
+        const hasCriticalLeak = blynkLeak || fastAlarmActive;
+        const hasPredictive = !hasCriticalLeak && ((v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3));
+        const hasSensorFault = !hasCriticalLeak && ((v0 === 2) || (v6 === 2));
 
         updateUI({
           has_leak: hasCriticalLeak,
           has_error: hasSensorFault,
           has_predictive: hasPredictive,
-          inlet_code: v3,
-          outlet_code: v4,
-          unit_code: v5,
-          ext_code: v6
+          inlet_code: inCode,
+          outlet_code: outCode,
+          unit_code: unCode,
+          ext_code: exCode
         });
 
       } catch (err) {
