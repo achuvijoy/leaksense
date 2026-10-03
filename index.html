@@ -152,7 +152,7 @@
     .banner-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .banner-sub { font-size: 0.90rem; font-weight: 700; color: #ffffff; margin-top: 2px; }
 
-    /* Dashboard Layout */
+    /* Dashboard Content */
     .dashboard-content {
       width: 100%;
       display: flex;
@@ -160,17 +160,8 @@
       align-items: center;
     }
 
-    .left-panel {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .right-panel {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-    }
+    .left-panel { width: 100%; display: flex; flex-direction: column; }
+    .right-panel { width: 100%; display: flex; flex-direction: column; }
 
     .status-orb-card {
       width: 100%;
@@ -460,7 +451,7 @@
       cursor: pointer;
     }
 
-    /* Responsive Layout */
+    /* Responsive */
     @media (min-width: 820px) {
       body { padding: 26px 20px; }
       .app-wrapper { max-width: 1060px; }
@@ -482,7 +473,7 @@
 <body>
 
   <div class="app-wrapper">
-    <!-- Top Header -->
+    <!-- Header -->
     <div class="app-header">
       <div class="brand-group">
         <div class="thermo-logo">thermo<span>scientific</span></div>
@@ -512,10 +503,10 @@
       </div>
     </div>
 
-    <!-- Main Dashboard Responsive Layout -->
+    <!-- Dashboard Content -->
     <div class="dashboard-content">
       
-      <!-- Left Panel: Center Orb + Siren Toggle -->
+      <!-- Left Panel -->
       <div class="left-panel">
         <div class="status-orb-card">
           <div class="orb-inner-wrapper">
@@ -535,7 +526,7 @@
         </div>
       </div>
 
-      <!-- Right Panel: Clickable 4 Zones & Firebase Cloud Audit Table -->
+      <!-- Right Panel -->
       <div class="right-panel">
         <div class="zone-container">
           <div class="zone-card" id="cardInlet" onclick="openZoneHistory('inlet', 'Inlet Plumbing')">
@@ -571,7 +562,6 @@
           </div>
         </div>
 
-        <!-- Real-time Cloud Audit Log Table -->
         <div class="audit-box">
           <div class="audit-header">
             <span>Cloud Incident Audit Log</span>
@@ -633,7 +623,7 @@
 
   <script>
     // ----------------------------------------------------
-    // FIREBASE REALTIME DATABASE SYNC + FAST ALARM TRIGGER
+    // FAST FIREBASE TRIGGER + BLYNK VERIFICATION PIPELINE
     // ----------------------------------------------------
     const DB_URL = "https://leaksense-92062-default-rtdb.firebaseio.com";
     let cloudEvents = [];
@@ -641,9 +631,11 @@
 
     let knownEventKeys = new Set();
     let isInitialFirebaseLoad = true;
-    let fastAlarmActive = false;
-    let fastAlarmZone = "";
-    let fastAlarmTimer = null;
+
+    // Single Incident Session Tracking
+    let activeAlarmSession = false;
+    let latchedBreachedZone = "";
+    let isSilenced = false;
 
     try {
       const firebaseConfig = { databaseURL: DB_URL };
@@ -687,16 +679,16 @@
       if (isInitialFirebaseLoad) {
         isInitialFirebaseLoad = false;
       } else if (newEvents.length > 0) {
-        // Fast Alarm Trigger: Fires within ~150ms as soon as the event posts to Firebase
+        // Fast Alarm: First responder (<150ms)
         const newest = newEvents[newEvents.length - 1];
-        triggerFastFirebaseAlarm(newest);
+        startFirebaseAlarmSession(newest);
       }
 
       renderMasterTable();
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
     }
 
-    function triggerFastFirebaseAlarm(event) {
+    function startFirebaseAlarmSession(event) {
       let rawZone = (event.zone || "LEAK").toUpperCase();
       let label = rawZone;
       if (label.includes("INLET")) label = "INLET PLUMBING";
@@ -704,43 +696,35 @@
       else if (label.includes("UNIT")) label = "UNIT PLUMBING";
       else if (label.includes("EXT")) label = "EXTERNAL PLUMBING";
 
-      fastAlarmZone = label;
-      fastAlarmActive = true;
+      latchedBreachedZone = label;
+      activeAlarmSession = true;
 
-      if (fastAlarmTimer) clearTimeout(fastAlarmTimer);
-      // Auto-fallback timeout: after 10 seconds, yield completely to Blynk
-      fastAlarmTimer = setTimeout(() => {
-        fastAlarmActive = false;
-      }, 10000);
-
-      // Synthesize immediate UI alarm without waiting for Blynk HTTP poll
-      let inletCode = label.includes("INLET") ? 1 : 0;
-      let outletCode = label.includes("OUTLET") ? 1 : 0;
-      let unitCode = label.includes("UNIT") ? 1 : 0;
-      let extCode = label.includes("EXT") ? 1 : 0;
+      let inCode = label.includes("INLET") ? 1 : 0;
+      let outCode = label.includes("OUTLET") ? 1 : 0;
+      let unCode = label.includes("UNIT") ? 1 : 0;
+      let exCode = label.includes("EXT") ? 1 : 0;
 
       updateUI({
         has_leak: true,
         has_error: false,
         has_predictive: false,
-        inlet_code: inletCode,
-        outlet_code: outletCode,
-        unit_code: unitCode,
-        ext_code: extCode
+        inlet_code: inCode,
+        outlet_code: outCode,
+        unit_code: unCode,
+        ext_code: exCode
       });
     }
 
     setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
-    // BLYNK TELEMETRY SETUP (BLR1 CLUSTER CONFIRMATION)
+    // BLYNK VERIFICATION & TELEMETRY
     // ----------------------------------------------------
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
     const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
 
     let audioCtx = null;
     let alarmInterval = null;
-    let isSilenced = false;
     let lastHeartbeat = null;
     let staleCounter = 0;
 
@@ -875,10 +859,7 @@
           fetchPin('v6')
         ]);
 
-        if (lastHeartbeat === null) {
-          lastHeartbeat = v1;
-          staleCounter = 0;
-        } else if (v1 !== lastHeartbeat) {
+        if (lastHeartbeat === null || v1 !== lastHeartbeat) {
           lastHeartbeat = v1;
           staleCounter = 0;
         } else {
@@ -896,26 +877,40 @@
 
         const blynkLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
         
-        // Once Blynk confirms the leak, handover fast alarm to Blynk
-        if (blynkLeak) {
-          fastAlarmActive = false;
-          if (fastAlarmTimer) clearTimeout(fastAlarmTimer);
-        }
-
         let inCode = v3;
         let outCode = v4;
         let unCode = v5;
         let exCode = v6;
 
-        // If fast alarm is still active waiting for Blynk HTTP update, overlay zone:
-        if (fastAlarmActive) {
-          if (fastAlarmZone.includes("INLET")) inCode = 1;
-          if (fastAlarmZone.includes("OUTLET")) outCode = 1;
-          if (fastAlarmZone.includes("UNIT")) unCode = 1;
-          if (fastAlarmZone.includes("EXT")) exCode = 1;
+        // Check if an alarm condition is active from either source
+        const hasCriticalLeak = blynkLeak || activeAlarmSession;
+
+        if (hasCriticalLeak) {
+          activeAlarmSession = true;
+
+          // Seamless Handshake: If Blynk is still uploading individual zone pins (v3-v6 are 0)
+          // but v0=1 or Firebase started the session, retain the latched zone so the UI doesn't drop.
+          if (inCode !== 1 && outCode !== 1 && unCode !== 1 && exCode !== 1 && latchedBreachedZone) {
+            if (latchedBreachedZone.includes("INLET")) inCode = 1;
+            if (latchedBreachedZone.includes("OUTLET")) outCode = 1;
+            if (latchedBreachedZone.includes("UNIT")) unCode = 1;
+            if (latchedBreachedZone.includes("EXT")) exCode = 1;
+          } else if (inCode === 1 || outCode === 1 || unCode === 1 || exCode === 1) {
+            // Blynk has confirmed specific zones
+            let confirmed = [];
+            if (inCode === 1) confirmed.push("INLET PLUMBING");
+            if (outCode === 1) confirmed.push("OUTLET PLUMBING");
+            if (unCode === 1) confirmed.push("UNIT PLUMBING");
+            if (exCode === 1) confirmed.push("EXTERNAL PLUMBING");
+            latchedBreachedZone = confirmed.join(" + ");
+          }
+        } else {
+          // Both Blynk and hardware confirm all zones are dry
+          activeAlarmSession = false;
+          latchedBreachedZone = "";
+          isSilenced = false; // Reset acknowledgment only after the leak clears
         }
 
-        const hasCriticalLeak = blynkLeak || fastAlarmActive;
         const hasPredictive = !hasCriticalLeak && ((v0 === 3) || (v3 === 3) || (v4 === 3) || (v5 === 3) || (v6 === 3));
         const hasSensorFault = !hasCriticalLeak && ((v0 === 2) || (v6 === 2));
 
@@ -974,6 +969,10 @@
       if (state.unit_code === 1) breached.push("UNIT PLUMBING");
       if (state.ext_code === 1) breached.push("EXTERNAL PLUMBING");
 
+      if (state.has_leak && breached.length === 0 && latchedBreachedZone) {
+        breached.push(latchedBreachedZone);
+      }
+
       let atRisk = [];
       if (state.inlet_code === 3) atRisk.push("INLET PLUMBING");
       if (state.outlet_code === 3) atRisk.push("OUTLET PLUMBING");
@@ -991,13 +990,13 @@
         bannerZoneText.innerText = breached.join(" + ");
         alertBanner.style.display = "flex";
 
+        // Opens modal & starts siren only once per session; respects acknowledgment
         if (!isSilenced) {
           document.getElementById('modalZoneText').innerText = breached.join(" + ");
           document.getElementById('emergencyModal').style.display = "flex";
           if (!alarmInterval) { playSirenTone(); alarmInterval = setInterval(playSirenTone, 800); }
         }
       } else if (state.has_predictive || atRisk.length > 0) {
-        isSilenced = false;
         alertBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
         if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
@@ -1012,7 +1011,6 @@
         predZoneText.innerText = `High leak frequency recorded in: ${zoneStr}. Schedule inspection before major failure occurs!`;
         predBanner.style.display = "flex";
       } else if (state.has_error) {
-        isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
@@ -1024,7 +1022,6 @@
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
       } else {
-        isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
         document.getElementById('emergencyModal').style.display = "none";
