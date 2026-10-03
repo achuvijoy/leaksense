@@ -108,13 +108,17 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--alarm);
-      box-shadow: 0 0 8px var(--alarm);
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
       transition: all 0.3s ease;
     }
     .dot.connected {
       background: var(--safe);
       box-shadow: 0 0 10px var(--safe);
+    }
+    .dot.offline {
+      background: var(--offline);
+      box-shadow: none;
     }
 
     /* Banners */
@@ -203,10 +207,14 @@
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 3px solid var(--safe);
-      box-shadow: 0 0 35px var(--safe-glow);
+      border: 3px solid var(--warn);
+      box-shadow: 0 0 25px rgba(255, 184, 0, 0.3);
       animation: breathe 3s infinite alternate ease-in-out;
       transition: all 0.5s ease;
+    }
+    .orb-ring.safe {
+      border-color: var(--safe);
+      box-shadow: 0 0 35px var(--safe-glow);
     }
     .orb-ring.alarm {
       border-color: var(--alarm);
@@ -277,7 +285,7 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* 4-Zone Grid (With Incident Count Label matching Local UI) */
+    /* 4-Zone Grid */
     .zone-container {
       width: 100%;
       display: grid;
@@ -306,7 +314,7 @@
       border-color: var(--warn);
       background: var(--warn-bg);
     }
-    .zone-card.offline { opacity: 0.6; }
+    .zone-card.offline { opacity: 0.5; border-color: rgba(255, 255, 255, 0.04); }
 
     .zone-top-row { display: flex; justify-content: space-between; align-items: center; }
     .zone-header { font-size: 0.74rem; font-weight: 700; color: var(--sub); text-transform: uppercase; }
@@ -320,16 +328,16 @@
       font-weight: 800;
       padding: 6px 10px;
       border-radius: 10px;
-      background: var(--safe-bg);
-      color: var(--safe);
-      border: 1px solid rgba(0, 240, 144, 0.3);
+      background: rgba(100, 116, 139, 0.15);
+      color: var(--sub);
+      border: 1px solid rgba(100, 116, 139, 0.25);
       width: fit-content;
     }
     .zone-card.alarm .zone-status-badge { background: var(--alarm); color: #ffffff; border-color: var(--alarm); }
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+    .zone-card.safe .zone-status-badge { background: var(--safe-bg); color: var(--safe); border-color: rgba(0, 240, 144, 0.3); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 
-    /* Incident Counter Line below badge */
     .zone-incidents {
       font-size: 0.68rem;
       color: var(--sub);
@@ -363,7 +371,7 @@
     .tag-warn { color: var(--warn); font-weight: 700; }
     .tag-leak { color: var(--alarm); font-weight: 700; }
 
-    /* Emergency Modal */
+    /* Modals */
     #emergencyModal {
       position: fixed;
       inset: 0;
@@ -416,11 +424,8 @@
       cursor: pointer;
       transition: transform 0.15s ease;
     }
-    .dismiss-btn:active {
-      transform: scale(0.97);
-    }
+    .dismiss-btn:active { transform: scale(0.97); }
 
-    /* Zone Modal */
     #zoneModal {
       position: fixed;
       inset: 0;
@@ -488,7 +493,7 @@
       </div>
       <div class="connection-badge">
         <div class="dot" id="connDot"></div>
-        <span id="connText">Connecting...</span>
+        <span id="connText">CONNECTING...</span>
       </div>
     </div>
 
@@ -517,8 +522,8 @@
           <div class="orb-inner-wrapper">
             <div class="status-orb-container">
               <div class="orb-ring" id="orbRing"></div>
-              <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--safe)">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              <svg class="master-icon" id="masterIcon" viewBox="0 0 24 24" fill="var(--warn)">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
               <div class="master-status-text" id="masterStatusText">CONNECTING...</div>
               <div class="last-seen-text" id="lastSeenText">Syncing Telemetry...</div>
@@ -531,7 +536,7 @@
         </div>
       </div>
 
-      <!-- Right Panel: 4 Zones with Incidents: N -->
+      <!-- Right Panel -->
       <div class="right-panel">
         <div class="zone-container">
           <div class="zone-card" id="cardInlet" onclick="openZoneHistory('inlet', 'Inlet Plumbing')">
@@ -539,8 +544,8 @@
               <span class="zone-header">Inlet Plumbing</span>
               <span class="zone-hint">View Log ❯</span>
             </div>
-            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtInlet">SYNCING</span></div>
-            <div class="zone-incidents" id="incInlet">Incidents: 0</div>
+            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtInlet">CONNECTING</span></div>
+            <div class="zone-incidents" id="incInlet">Incidents: --</div>
           </div>
 
           <div class="zone-card" id="cardOutlet" onclick="openZoneHistory('outlet', 'Outlet Plumbing')">
@@ -548,8 +553,8 @@
               <span class="zone-header">Outlet Plumbing</span>
               <span class="zone-hint">View Log ❯</span>
             </div>
-            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtOutlet">SYNCING</span></div>
-            <div class="zone-incidents" id="incOutlet">Incidents: 0</div>
+            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtOutlet">CONNECTING</span></div>
+            <div class="zone-incidents" id="incOutlet">Incidents: --</div>
           </div>
 
           <div class="zone-card" id="cardUnit" onclick="openZoneHistory('unit', 'Unit Plumbing')">
@@ -557,8 +562,8 @@
               <span class="zone-header">Unit Plumbing</span>
               <span class="zone-hint">View Log ❯</span>
             </div>
-            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">SYNCING</span></div>
-            <div class="zone-incidents" id="incUnit">Incidents: 0</div>
+            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">CONNECTING</span></div>
+            <div class="zone-incidents" id="incUnit">Incidents: --</div>
           </div>
 
           <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External Plumbing')">
@@ -566,8 +571,8 @@
               <span class="zone-header">External Plumbing</span>
               <span class="zone-hint">View Log ❯</span>
             </div>
-            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">SYNCING</span></div>
-            <div class="zone-incidents" id="incExt">Incidents: 0</div>
+            <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">CONNECTING</span></div>
+            <div class="zone-incidents" id="incExt">Incidents: --</div>
           </div>
         </div>
 
@@ -608,7 +613,7 @@
     <div class="modal-content">
       <div class="modal-title">
         <span id="zoneModalTitle">Zone Details</span>
-        <span id="zoneModalStatus" style="font-size: 0.8rem;">DRY</span>
+        <span id="zoneModalStatus" style="font-size: 0.8rem;">--</span>
       </div>
       <div class="modal-stats">
         <div class="stat-chip">Lifetime Incidents: <span id="zoneModalIncidents">0</span></div>
@@ -733,7 +738,7 @@
         has_predictive: false,
         inlet_code: inCode,
         outlet_code: outCode,
-        unit_code: unitCode,
+        unit_code: unCode,
         ext_code: exCode
       });
     }
@@ -751,6 +756,7 @@
     let isSilenced = false;
     let lastHeartbeat = null;
     let staleCounter = 0;
+    let hasReceivedLiveHeartbeat = false;
 
     function enableAudioEngine() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -883,18 +889,28 @@
           fetchPin('v6')
         ]);
 
-        if (lastHeartbeat === null || v1 !== lastHeartbeat) {
+        // Heartbeat Watchdog Verification
+        if (lastHeartbeat === null) {
           lastHeartbeat = v1;
           staleCounter = 0;
+          // While we wait for the first counter increment, maintain connecting state
+          return;
+        } else if (v1 !== lastHeartbeat && v1 > 0) {
+          lastHeartbeat = v1;
+          staleCounter = 0;
+          hasReceivedLiveHeartbeat = true;
         } else {
           staleCounter++;
         }
 
-        if (staleCounter >= 10) {
+        // If stale for 4s on initial boot (never advanced) or 5s during run: Hardware is OFF
+        const timeoutLimit = hasReceivedLiveHeartbeat ? 5 : 4;
+        if (staleCounter >= timeoutLimit) {
           applyOfflineState();
           return;
         }
 
+        // Active Live Connection Established
         document.getElementById('connDot').className = "dot connected";
         document.getElementById('connText').innerText = "LIVE IEC-DEV-01";
         document.getElementById('lastSeenText').innerText = (v2 && v2 !== "0.0.0.0") ? `Unit IP: ${v2}` : "Telemetry Online";
@@ -953,7 +969,7 @@
     }
 
     function applyOfflineState() {
-      document.getElementById('connDot').className = "dot";
+      document.getElementById('connDot').className = "dot offline";
       document.getElementById('connText').innerText = "DEVICE OFFLINE";
       const orb = document.getElementById('orbRing');
       const icon = document.getElementById('masterIcon');
@@ -967,9 +983,16 @@
       title.style.color = "var(--offline)";
       lastSeen.innerText = "ESP32 Disconnected";
 
+      // Explicitly mark all zones as OFFLINE
+      setZoneCard('cardInlet', 'txtInlet', -1);
+      setZoneCard('cardOutlet', 'txtOutlet', -1);
+      setZoneCard('cardUnit', 'txtUnit', -1);
+      setZoneCard('cardExt', 'txtExt', -1);
+
       document.getElementById('alertBanner').style.display = "none";
       document.getElementById('predBanner').style.display = "none";
       document.getElementById('emergencyModal').style.display = "none";
+      if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
     }
 
     function updateUI(state) {
@@ -1052,7 +1075,7 @@
         document.getElementById('emergencyModal').style.display = "none";
         if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
 
-        orb.className = "orb-ring";
+        orb.className = "orb-ring safe";
         icon.style.fill = "var(--safe)";
         icon.innerHTML = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>';
         title.innerText = "SYSTEM SECURE";
@@ -1063,7 +1086,7 @@
     function setZoneCard(cardId, txtId, code) {
       const card = document.getElementById(cardId);
       const txt = document.getElementById(txtId);
-      card.classList.remove('alarm', 'warn', 'offline');
+      card.classList.remove('alarm', 'warn', 'safe', 'offline');
 
       if (code === -1) {
         card.classList.add('offline');
@@ -1078,6 +1101,7 @@
         card.classList.add('warn');
         txt.innerText = "FAULT";
       } else {
+        card.classList.add('safe');
         txt.innerText = "✓ DRY / SAFE";
       }
     }
