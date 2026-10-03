@@ -277,7 +277,7 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* 4-Zone Grid */
+    /* 4-Zone Grid (With Incident Count Label matching Local UI) */
     .zone-container {
       width: 100%;
       display: grid;
@@ -311,6 +311,7 @@
     .zone-top-row { display: flex; justify-content: space-between; align-items: center; }
     .zone-header { font-size: 0.74rem; font-weight: 700; color: var(--sub); text-transform: uppercase; }
     .zone-hint { font-size: 0.62rem; color: #38bdf8; font-weight: 600; }
+    
     .zone-status-badge {
       display: inline-flex;
       align-items: center;
@@ -327,6 +328,14 @@
     .zone-card.alarm .zone-status-badge { background: var(--alarm); color: #ffffff; border-color: var(--alarm); }
     .zone-card.warn .zone-status-badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
     .badge-icon { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+
+    /* Incident Counter Line below badge */
+    .zone-incidents {
+      font-size: 0.68rem;
+      color: var(--sub);
+      font-weight: 600;
+      margin-top: 2px;
+    }
 
     /* Audit Log Table */
     .audit-box {
@@ -522,7 +531,7 @@
         </div>
       </div>
 
-      <!-- Right Panel -->
+      <!-- Right Panel: 4 Zones with Incidents: N -->
       <div class="right-panel">
         <div class="zone-container">
           <div class="zone-card" id="cardInlet" onclick="openZoneHistory('inlet', 'Inlet Plumbing')">
@@ -531,6 +540,7 @@
               <span class="zone-hint">View Log ❯</span>
             </div>
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtInlet">SYNCING</span></div>
+            <div class="zone-incidents" id="incInlet">Incidents: 0</div>
           </div>
 
           <div class="zone-card" id="cardOutlet" onclick="openZoneHistory('outlet', 'Outlet Plumbing')">
@@ -539,6 +549,7 @@
               <span class="zone-hint">View Log ❯</span>
             </div>
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtOutlet">SYNCING</span></div>
+            <div class="zone-incidents" id="incOutlet">Incidents: 0</div>
           </div>
 
           <div class="zone-card" id="cardUnit" onclick="openZoneHistory('unit', 'Unit Plumbing')">
@@ -547,6 +558,7 @@
               <span class="zone-hint">View Log ❯</span>
             </div>
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtUnit">SYNCING</span></div>
+            <div class="zone-incidents" id="incUnit">Incidents: 0</div>
           </div>
 
           <div class="zone-card" id="cardExt" onclick="openZoneHistory('external', 'External Plumbing')">
@@ -555,6 +567,7 @@
               <span class="zone-hint">View Log ❯</span>
             </div>
             <div class="zone-status-badge"><div class="badge-icon"></div><span id="txtExt">SYNCING</span></div>
+            <div class="zone-incidents" id="incExt">Incidents: 0</div>
           </div>
         </div>
 
@@ -627,7 +640,7 @@
     let knownEventKeys = new Set();
     let isInitialFirebaseLoad = true;
 
-    // Decoupled Fast Handshake Tracking
+    // Fast Handshake Tracking
     let fastAlarmActive = false;
     let fastAlarmTime = 0;
     let fastAlarmZone = "";
@@ -679,8 +692,21 @@
         startFirebaseFastAlarm(newest);
       }
 
+      updateZoneIncidentBadges();
       renderMasterTable();
       if (activeZoneKey) renderZoneModalTable(activeZoneKey);
+    }
+
+    function updateZoneIncidentBadges() {
+      const inCount = cloudEvents.filter(e => (e.zone || "").toLowerCase().includes("inlet")).length;
+      const outCount = cloudEvents.filter(e => (e.zone || "").toLowerCase().includes("outlet")).length;
+      const unitCount = cloudEvents.filter(e => (e.zone || "").toLowerCase().includes("unit")).length;
+      const extCount = cloudEvents.filter(e => (e.zone || "").toLowerCase().includes("ext")).length;
+
+      document.getElementById('incInlet').innerText = `Incidents: ${inCount}`;
+      document.getElementById('incOutlet').innerText = `Incidents: ${outCount}`;
+      document.getElementById('incUnit').innerText = `Incidents: ${unitCount}`;
+      document.getElementById('incExt').innerText = `Incidents: ${extCount}`;
     }
 
     function startFirebaseFastAlarm(event) {
@@ -707,7 +733,7 @@
         has_predictive: false,
         inlet_code: inCode,
         outlet_code: outCode,
-        unit_code: unCode,
+        unit_code: unitCode,
         ext_code: exCode
       });
     }
@@ -715,7 +741,7 @@
     setInterval(fetchDirectREST, 6000);
 
     // ----------------------------------------------------
-    // BLYNK VERIFICATION & REAL-TIME HARDWARE RECOVERY
+    // BLYNK VERIFICATION & REAL-TIME RECOVERY
     // ----------------------------------------------------
     const BLYNK_AUTH = "YiCzpRDlxi5_-BMoMiQfM9lyFDnXgspV";
     const BLYNK_HOST = "https://blr1.blynk.cloud/external/api";
@@ -875,25 +901,21 @@
 
         const blynkLeak = (v0 === 1) || (v3 === 1) || (v4 === 1) || (v5 === 1) || (v6 === 1);
 
-        // 1. Handover: If Blynk confirms the leak, handover complete
         if (blynkLeak) {
           blynkConfirmedLeak = true;
           fastAlarmActive = false;
         }
 
-        // 2. Timeout: If fast alarm fired but Blynk hasn't responded within 6 seconds, expire it
         if (fastAlarmActive && (Date.now() - fastAlarmTime > 6000)) {
           fastAlarmActive = false;
         }
 
-        // 3. Auto-Clear: If Blynk previously confirmed the leak but is now reporting dry, clear immediately
         if (blynkConfirmedLeak && !blynkLeak) {
           blynkConfirmedLeak = false;
           fastAlarmActive = false;
           fastAlarmZone = "";
         }
 
-        // Critical status is TRUE only if Blynk confirms it or fast alarm window is active
         const hasCriticalLeak = blynkLeak || fastAlarmActive;
 
         let inCode = v3;
@@ -901,7 +923,6 @@
         let unCode = v5;
         let exCode = v6;
 
-        // If fast alarm is active during the 2-second handover gap, map the zone
         if (hasCriticalLeak) {
           if (inCode !== 1 && outCode !== 1 && unCode !== 1 && exCode !== 1 && fastAlarmZone) {
             if (fastAlarmZone.includes("INLET")) inCode = 1;
@@ -1025,7 +1046,6 @@
         title.innerText = "SENSOR FAULT";
         title.style.color = "var(--warn)";
       } else {
-        // Normal Secure: Cleans up everything automatically
         isSilenced = false;
         alertBanner.style.display = "none";
         predBanner.style.display = "none";
